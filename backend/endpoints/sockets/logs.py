@@ -17,7 +17,6 @@ from typing import Any, Final
 import socketio  # type: ignore
 
 from config import DISABLE_LOGS_VIEWER, REDIS_URL
-from endpoints.sockets.activity import store_authenticated_user
 from handler.database import db_user_handler
 from handler.redis_handler import async_cache
 from handler.socket_handler import socket_handler
@@ -28,6 +27,15 @@ from utils import json_module
 from utils.auth import get_session_from_environ
 
 ADMIN_ROOM: Final = "admin"
+
+
+async def store_authenticated_user(sid: str, user_id: int) -> None:
+    """Remember the server-resolved user on the socket session."""
+    session = await socket_handler.socket_server.get_session(sid)
+    session["user_id"] = user_id
+    await socket_handler.socket_server.save_session(sid, session)
+
+
 FORWARDER_LOCK_KEY: Final = "romm:logs:forwarder"
 FORWARDER_LOCK_TTL: Final = 30  # seconds
 

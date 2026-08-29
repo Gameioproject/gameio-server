@@ -17,10 +17,25 @@ from typing import IO, Final, Literal
 
 import magic
 import zipfile_inflate64  # trunk-ignore(ruff/F401): Patches zipfile to support Enhanced Deflate
+from zipfile_inflate64._patcher import patch as _inflate64_patch
 
 from config import SEVEN_ZIP_TIMEOUT
 from logger.logger import log
 from utils.filesystem import COMPRESSED_FILE_EXTENSIONS
+
+# zipfile_inflate64 0.1 installs a one-argument _get_compressor, but the stdlib
+# passes compresslevel as well, which breaks every ZIP write.
+_inflate64_get_compressor = zipfile._get_compressor  # type: ignore[attr-defined]
+_stdlib_get_compressor = _inflate64_patch.originals["_get_compressor"]
+
+
+def _get_compressor(compress_type: int, compresslevel: int | None = None):
+    if compress_type == zipfile.ZIP_DEFLATED64:  # type: ignore[attr-defined]
+        return _inflate64_get_compressor(compress_type)
+    return _stdlib_get_compressor(compress_type, compresslevel)
+
+
+zipfile._get_compressor = _get_compressor  # type: ignore[attr-defined]
 
 # 7zip archives are read through 7zz.
 SEVEN_ZIP_PATH = "/usr/bin/7zz"
