@@ -9,7 +9,7 @@ Create Date: 2024-11-17 23:05:31.038917
 import sqlalchemy as sa
 from alembic import op
 
-from models.platform import DEFAULT_COVER_ASPECT_RATIO
+DEFAULT_COVER_ASPECT_RATIO = "2 / 3"
 
 # revision identifiers, used by Alembic.
 revision = "0027_platforms_data"

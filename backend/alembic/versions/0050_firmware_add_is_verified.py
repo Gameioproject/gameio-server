@@ -6,11 +6,35 @@ Create Date: 2025-08-22 04:42:22.367888
 
 """
 
+import json
+
 import sqlalchemy as sa
 from alembic import op
 
-from models.firmware import Firmware
+from handler.redis_handler import sync_cache
 from utils.database import is_postgresql
+
+KNOWN_BIOS_KEY = "romm:known_bios_files"
+
+
+def _verify_file_hashes(
+    platform_slug: str,
+    file_name: str,
+    file_size_bytes: int,
+    md5_hash: str,
+    sha1_hash: str,
+    crc_hash: str,
+) -> bool:
+    cache_entry = sync_cache.hget(KNOWN_BIOS_KEY, f"{platform_slug}:{file_name}")
+    if not cache_entry:
+        return False
+    cache_json = json.loads(cache_entry)
+    return file_size_bytes == int(cache_json.get("size", 0)) and (
+        md5_hash == cache_json.get("md5")
+        or sha1_hash == cache_json.get("sha1")
+        or crc_hash == cache_json.get("crc")
+    )
+
 
 # revision identifiers, used by Alembic.
 revision = "0050_firmware_add_is_verified"
@@ -37,7 +61,7 @@ def upgrade() -> None:
     verified_firmware_ids = []
 
     for firmware in all_firmware:
-        is_verified = Firmware.verify_file_hashes(
+        is_verified = _verify_file_hashes(
             platform_slug=firmware.platform_slug,
             file_name=firmware.file_name,
             file_size_bytes=firmware.file_size_bytes,
