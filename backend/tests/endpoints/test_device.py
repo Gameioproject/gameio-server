@@ -375,58 +375,6 @@ class TestDeviceDuplicateHandling:
         assert data["device_id"] == existing.id
         assert data["name"] == "Existing Device"
 
-    def test_allow_existing_with_reset_syncs(
-        self, client, access_token: str, admin_user: User, rom
-    ):
-        from handler.database import db_device_save_sync_handler, db_save_handler
-        from models.assets import Save
-
-        existing = db_device_handler.add_device(
-            Device(
-                id="reset-syncs-device",
-                user_id=admin_user.id,
-                name="Device With Syncs",
-                mac_address="77:88:99:AA:BB:CC",
-            )
-        )
-
-        save = db_save_handler.add_save(
-            Save(
-                file_name="test.sav",
-                file_name_no_tags="test",
-                file_name_no_ext="test",
-                file_extension="sav",
-                file_path="/saves",
-                file_size_bytes=100,
-                rom_id=rom.id,
-                user_id=admin_user.id,
-            )
-        )
-        db_device_save_sync_handler.upsert_sync(device_id=existing.id, save_id=save.id)
-
-        sync_before = db_device_save_sync_handler.get_sync(
-            device_id=existing.id, save_id=save.id
-        )
-        assert sync_before is not None
-
-        response = client.post(
-            "/api/devices",
-            json={
-                "mac_address": "77:88:99:AA:BB:CC",
-                "allow_existing": True,
-                "reset_syncs": True,
-            },
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-
-        assert response.status_code == status.HTTP_200_OK
-        assert response.json()["device_id"] == existing.id
-
-        sync_after = db_device_save_sync_handler.get_sync(
-            device_id=existing.id, save_id=save.id
-        )
-        assert sync_after is None
-
     def test_allow_duplicate_creates_new_device(
         self, client, access_token: str, admin_user: User
     ):

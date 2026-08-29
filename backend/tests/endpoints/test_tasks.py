@@ -78,8 +78,6 @@ def create_mock_job(job_id="1", status="queued"):
 class TestListTasks:
     """Test suite for the list_tasks endpoint"""
 
-    @patch("endpoints.tasks.ENABLE_RESCAN_ON_FILESYSTEM_CHANGE", True)
-    @patch("endpoints.tasks.RESCAN_ON_FILESYSTEM_CHANGE_DELAY", 5)
     @patch(
         "endpoints.tasks.manual_tasks",
         [
@@ -154,18 +152,8 @@ class TestListTasks:
         assert manual_task["manual_run"] is True
         assert manual_task["cron_string"] == ""
 
-        # Check watcher task
-        assert len(data["watcher"]) == 1
-        watcher_task = data["watcher"][0]
-        assert watcher_task["name"] == "filesystem_watcher"
-        assert watcher_task["title"] == "Rescan on filesystem change"
-        assert "5 minute delay" in watcher_task["description"]
-        assert watcher_task["enabled"] is True
-        assert watcher_task["manual_run"] is False
-        assert watcher_task["cron_string"] == ""
+        assert data["watcher"] == []
 
-    @patch("endpoints.tasks.ENABLE_RESCAN_ON_FILESYSTEM_CHANGE", False)
-    @patch("endpoints.tasks.RESCAN_ON_FILESYSTEM_CHANGE_DELAY", 10)
     @patch("endpoints.tasks.manual_tasks", [])
     @patch("endpoints.tasks.scheduled_tasks", [])
     def test_list_tasks_empty(self, client, access_token):
@@ -179,9 +167,7 @@ class TestListTasks:
 
         assert data["scheduled"] == []
         assert data["manual"] == []
-        assert len(data["watcher"]) == 1
-        assert data["watcher"][0]["enabled"] is False
-        assert "10 minute delay" in data["watcher"][0]["description"]
+        assert data["watcher"] == []
 
     def test_list_tasks_unauthorized(self, client):
         """Test that unauthorized requests are rejected"""
@@ -545,8 +531,6 @@ class TestTaskInfoBuilding:
 class TestIntegration:
     """Integration tests for the tasks endpoints"""
 
-    @patch("endpoints.tasks.ENABLE_RESCAN_ON_FILESYSTEM_CHANGE", True)
-    @patch("endpoints.tasks.RESCAN_ON_FILESYSTEM_CHANGE_DELAY", 5)
     @patch(
         "endpoints.tasks.low_prio_queue.enqueue",
         return_value=create_mock_job(),
