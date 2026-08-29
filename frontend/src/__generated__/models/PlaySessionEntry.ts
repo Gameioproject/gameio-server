@@ -2,9 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type SystemDict = {
-    VERSION: string;
-    SHOW_SETUP_WIZARD: boolean;
-    CATALOG_ONLY: boolean;
+export type PlaySessionEntry = {
+    rom_id?: (number | null);
+    start_time: string;
+    end_time: string;
+    duration_ms?: number;
 };
 
