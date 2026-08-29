@@ -70,11 +70,6 @@ const logsViewerEnabled = computed(
 const canSeeProfile = computed(
   () => !!user.value?.id && scopes.value.includes("me.write"),
 );
-const canScan = computed(() => scopes.value.includes("platforms.write"));
-const canUpload = computed(() => scopes.value.includes("roms.write"));
-const canSeeLibraryMgmt = computed(() =>
-  scopes.value.includes("platforms.write"),
-);
 const canSeeScanSettings = computed(() =>
   scopes.value.includes("platforms.write"),
 );
@@ -190,41 +185,6 @@ async function onLogout() {
         {{ t("settings.group-library") }}
       </div>
       <RMenuItem
-        v-if="canScan"
-        :to="{ name: ROUTES.SCAN }"
-        icon="mdi-radar"
-        :label="t('scan.scan')"
-        @click="open = false"
-      />
-      <RMenuItem
-        v-if="canUpload"
-        :to="{ name: ROUTES.UPLOAD }"
-        icon="mdi-cloud-upload-outline"
-        :label="t('common.upload-roms')"
-        @click="open = false"
-      />
-      <RMenuItem
-        v-if="canSeeLibraryMgmt"
-        :to="{ name: ROUTES.LIBRARY_MANAGEMENT }"
-        icon="mdi-table-cog"
-        :label="t('common.library-management')"
-        @click="open = false"
-      />
-      <RMenuItem
-        v-if="canSeeScanSettings"
-        :to="{ name: ROUTES.SCAN_SETTINGS }"
-        icon="mdi-magnify-scan"
-        :label="t('settings.scan-settings')"
-        @click="open = false"
-      />
-      <RMenuItem
-        v-if="isAdmin"
-        :to="{ name: ROUTES.METADATA_SOURCES }"
-        icon="mdi-database-cog-outline"
-        :label="t('scan.metadata-sources')"
-        @click="open = false"
-      />
-      <RMenuItem
         v-if="canSeeApiTokens"
         :to="{ name: ROUTES.CLIENT_API_TOKENS }"
         icon="mdi-key-variant"
@@ -243,19 +203,6 @@ async function onLogout() {
         :to="{ name: ROUTES.ADMINISTRATION }"
         icon="mdi-shield-account-outline"
         :label="t('common.administration')"
-        @click="open = false"
-      />
-      <RMenuItem
-        :to="{ name: ROUTES.ACTIVITY }"
-        icon="mdi-access-point"
-        :label="t('activity.active-sessions')"
-        @click="open = false"
-      />
-      <RMenuItem
-        v-if="isAdmin"
-        :to="{ name: ROUTES.SERVER_STATS }"
-        icon="mdi-server"
-        :label="t('common.server-stats')"
         @click="open = false"
       />
       <RMenuItem

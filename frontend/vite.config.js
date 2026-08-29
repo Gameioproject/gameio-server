@@ -143,6 +143,24 @@ export default defineConfig(({ mode }) => {
           type: "module",
         },
       }),
+      {
+        name: "romm-dev-request-compat",
+        configureServer(server) {
+          server.middlewares.use((req, _res, next) => {
+            // nginx merges repeated slashes in production; mirror it so API clients get their assets
+            const originalUrl = req.url;
+            req.url = req.url.replace(/^\/{2,}/, "/");
+            if (env.DEV_LOG_REQUESTS === "true") {
+              _res.on("finish", () => {
+                console.log(
+                  `[req] ${req.socket.remoteAddress} ${req.method} ${originalUrl} -> ${_res.statusCode} ${_res.getHeader("content-type") ?? ""}`,
+                );
+              });
+            }
+            next();
+          });
+        },
+      },
       httpsMode &&
         mkcert({
           savePath: "/app/.vite-plugin-mkcert",
@@ -185,7 +203,10 @@ export default defineConfig(({ mode }) => {
         },
       },
       port: httpsMode ? 8443 : 3000,
-      allowedHosts: ["localhost", "127.0.0.1", "romm.dev"],
+      allowedHosts:
+        env.DEV_ALLOWED_HOSTS === "all"
+          ? true
+          : ["localhost", "127.0.0.1", "romm.dev"],
       ...(httpsMode
         ? {
             https: {

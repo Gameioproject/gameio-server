@@ -57,7 +57,7 @@ export function useGlobalHotkeys() {
 
       // Slash / ? — jump to search.
       if ((e.key === "/" || e.key === "?") && !pendingPrefix) {
-        router.push({ name: ROUTES.SEARCH });
+        router.push({ name: ROUTES.CATALOG });
         e.preventDefault();
         return;
       }

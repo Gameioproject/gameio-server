@@ -1,6 +1,5 @@
 import { createApp } from "vue";
 import App from "@/RomM.vue";
-import "@/console/index.css";
 import { localesReady } from "@/locales";
 import { registerPlugins } from "@/plugins";
 import router from "@/plugins/router";

@@ -14,7 +14,7 @@ vi.mock("@/stores/playing", () => ({
 // The real module instantiates a router at import time.
 vi.mock("@/plugins/router", () => ({
   ROUTES: {
-    SEARCH: "search",
+    CATALOG: "catalog",
     HOME: "home",
     PLATFORMS_INDEX: "platforms",
     COLLECTIONS_INDEX: "collections",
@@ -52,10 +52,10 @@ afterEach(() => {
 });
 
 describe("useGlobalHotkeys", () => {
-  it("routes to search on '/'", async () => {
+  it("routes to Discover on '/'", async () => {
     const host = await install();
     press("/");
-    expect(push).toHaveBeenCalledWith({ name: "search" });
+    expect(push).toHaveBeenCalledWith({ name: "catalog" });
     host.unmount();
   });
 

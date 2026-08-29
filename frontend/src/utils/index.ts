@@ -1,13 +1,7 @@
 import cronstrue from "cronstrue";
 import { formatDistanceToNow } from "date-fns";
-import { storeToRefs } from "pinia";
-import { computed } from "vue";
-import { useDisplay } from "vuetify";
-import type { RomFileSchema, RomUserStatus } from "@/__generated__";
 import type { Config } from "@/stores/config";
 import type { Heartbeat } from "@/stores/heartbeat";
-import storeNavigation from "@/stores/navigation";
-import type { DetailedRom, SimpleRom } from "@/stores/roms";
 
 /**
  * Views configuration object.
@@ -105,59 +99,6 @@ export function convertCronExperssion(expression: string) {
     convertedExpression.charAt(0).toLocaleLowerCase() +
     convertedExpression.substr(1);
   return convertedExpression;
-}
-
-/**
- * Generate a download link for ROM content.
- *
- * @param rom The ROM object.
- * @param files Optional array of file names to include in the download.
- * @returns The download link.
- */
-export function getDownloadPath({
-  rom,
-  fileIDs = [],
-}: {
-  rom: SimpleRom;
-  fileIDs?: number[];
-}) {
-  const queryParams = new URLSearchParams();
-  if (fileIDs.length > 0) {
-    queryParams.append("file_ids", fileIDs.join(","));
-  }
-  const queryString = queryParams.toString();
-
-  // If a single file is selected, use its name for the download path
-  const selectedFile =
-    fileIDs.length === 1
-      ? rom.files?.find((f) => f.id === fileIDs[0])
-      : undefined;
-  const nestedFile =
-    fileIDs.length === 0 &&
-    rom.has_nested_single_file &&
-    rom.files?.length === 1
-      ? rom.files[0]
-      : undefined;
-  const contentFile = selectedFile ?? nestedFile;
-  const contentName = contentFile
-    ? encodeURIComponent(contentFile.file_name)
-    : rom.fs_name;
-
-  return `/api/roms/${rom.id}/content/${contentName}${
-    queryString ? `?${queryString}` : ""
-  }`;
-}
-
-export function getDownloadLink({
-  rom,
-  fileIDs = [],
-}: {
-  rom: SimpleRom;
-  fileIDs?: number[];
-}) {
-  return `${window.location.origin}${encodeURI(
-    getDownloadPath({ rom, fileIDs }),
-  )}`;
 }
 
 /**
@@ -691,145 +632,6 @@ export function isRuffleEmulationSupported(
   return ["flash", "browser"].includes(slug.toLowerCase());
 }
 
-export type PlayingStatus =
-  RomUserStatus | "backlogged" | "now_playing" | "hidden";
-
-/**
- * Map of ROM statuses to their corresponding emoji, text, and i18n key.
- */
-export const romStatusMap: Record<
-  PlayingStatus,
-  { emoji: string; text: string; i18nKey: string }
-> = {
-  backlogged: {
-    emoji: "🔜",
-    text: "Backlogged",
-    i18nKey: "rom.status-backlogged",
-  },
-  now_playing: {
-    emoji: "🕹️",
-    text: "Now Playing",
-    i18nKey: "rom.status-now-playing",
-  },
-  incomplete: {
-    emoji: "🚧",
-    text: "Incomplete",
-    i18nKey: "rom.status-incomplete",
-  },
-  finished: { emoji: "🏁", text: "Finished", i18nKey: "rom.status-finished" },
-  completed_100: {
-    emoji: "💯",
-    text: "Completed 100%",
-    i18nKey: "rom.status-completed-100",
-  },
-  retired: { emoji: "🏴", text: "Retired", i18nKey: "rom.status-retired" },
-  never_playing: {
-    emoji: "🚫",
-    text: "Never Playing",
-    i18nKey: "rom.status-never-playing",
-  },
-  hidden: { emoji: "👻", text: "Hidden", i18nKey: "rom.status-hidden" },
-};
-
-/**
- * Get the emoji for a given ROM status.
- *
- * @param status The ROM status.
- * @returns The corresponding emoji.
- */
-export function getEmojiForStatus(status: PlayingStatus) {
-  if (status) {
-    return romStatusMap[status].emoji;
-  } else {
-    return null;
-  }
-}
-
-/**
- * Get the text for a given ROM status.
- *
- * @param status The ROM status.
- * @returns The corresponding text.
- */
-export function getTextForStatus(status: PlayingStatus): string | null {
-  return romStatusMap[status]?.text ?? null;
-}
-
-/**
- * Get the i18n key for a given ROM status.
- *
- * @param status The ROM status.
- * @returns The corresponding i18n key (e.g., "rom.status-backlogged").
- */
-export function getI18nKeyForStatus(status: PlayingStatus): string | null {
-  return romStatusMap[status]?.i18nKey ?? null;
-}
-
-export function isNintendoDSFile(rom: SimpleRom): boolean {
-  return ["cia", "nds", "3ds", "dsi"].includes(rom.fs_extension.toLowerCase());
-}
-
-export function getNintendoDSFiles(
-  rom: DetailedRom | SimpleRom,
-): RomFileSchema[] {
-  // `files` only ships on DetailedRom. Gallery surfaces pass SimpleRom,
-  // where the inner-file check is impossible — return an empty list so
-  // the caller falls back to the extension check.
-  const files = (rom as DetailedRom).files;
-  if (!files) return [];
-  return files.filter((file) => {
-    const fileName = file.file_name.toLowerCase();
-    return (
-      fileName.endsWith(".cia") ||
-      fileName.endsWith(".nds") ||
-      fileName.endsWith(".3ds") ||
-      fileName.endsWith(".dsi")
-    );
-  });
-}
-
-/**
- * Check if a ROM is a valid NDS/3DS/DSi game.
- *
- * Accepts both SimpleRom (gallery cards) and DetailedRom (detail view).
- * With SimpleRom the inner-file check is skipped — only the root
- * extension counts — which is what every gallery surface can ever see.
- */
-export function isNintendoDSRom(rom: DetailedRom | SimpleRom): boolean {
-  if (
-    !["3ds", "nds", "new-nintendo-3ds", "nintendo-dsi"].includes(
-      rom.platform_slug,
-    )
-  )
-    return false;
-
-  const hasValidExtension = isNintendoDSFile(rom);
-  const hasValidFile = getNintendoDSFiles(rom).length > 0;
-
-  return hasValidExtension || hasValidFile;
-}
-
-export function calculateMainLayoutWidth() {
-  const { smAndDown } = useDisplay();
-  const navigationStore = storeNavigation();
-  const { mainBarCollapsed } = storeToRefs(navigationStore);
-  const calculatedWidth = computed(() => {
-    return smAndDown.value
-      ? "calc(100% - 16px) !important"
-      : mainBarCollapsed.value
-        ? "calc(100% - 76px) !important"
-        : "calc(100% - 106px) !important";
-  });
-
-  return { calculatedWidth };
-}
-
-/**
- * Get the icon for a given platform category.
- *
- * @param category The platform category.
- * @returns The corresponding icon.
- */
 export function platformCategoryToIcon(category: string) {
   if (!category) return "";
   switch (category.toLowerCase()) {
