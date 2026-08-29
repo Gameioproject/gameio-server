@@ -1,5 +1,5 @@
 import json
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from fastapi import Body, Form, HTTPException
 from fastapi import Path as PathVar
@@ -18,8 +18,6 @@ from handler.filesystem.assets_handler import (
     build_asset_file_response,
     validate_image_upload,
 )
-from handler.metadata import meta_ra_handler
-from handler.metadata.ra_handler import RAUserProgression
 from logger.logger import log
 from models.user import Role, User
 from utils.router import APIRouter
@@ -536,45 +534,3 @@ async def delete_user(
         await fs_asset_handler.remove_directory(user_avatar_path)
     except FileNotFoundError:
         log.warning(f"Couldn't find avatar directory to delete for {user.username}")
-
-
-@protected_route(
-    router.post,
-    "/{id}/ra/refresh",
-    [Scope.ME_WRITE],
-    status_code=status.HTTP_200_OK,
-    summary="Refresh RetroAchievements",
-    responses={status.HTTP_404_NOT_FOUND: {}},
-)
-async def refresh_retro_achievements(
-    request: Request,
-    id: Annotated[int, PathVar(description="User internal id.", ge=1)],
-    incremental: Annotated[
-        bool,
-        Body(
-            description="Whether to only retrieve RetroAchievements progression incrementally.",
-            embed=True,
-        ),
-    ] = False,
-) -> None:
-    """Refresh RetroAchievements progression data for a user."""
-    user = db_user_handler.get_user(id)
-    if not user or not user.ra_username:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User does not have a RetroAchievements username set",
-        )
-
-    user_progression = await meta_ra_handler.get_user_progression(
-        user.ra_username,
-        current_progression=(
-            cast(RAUserProgression | None, user.ra_progression) if incremental else None
-        ),
-    )
-    db_user_handler.update_user(
-        id,
-        {
-            "ra_progression": user_progression,
-        },
-    )
-    return None

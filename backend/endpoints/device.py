@@ -7,8 +7,7 @@ from pydantic import BaseModel, model_validator
 from decorators.auth import protected_route
 from endpoints.responses.device import DeviceCreateResponse, DeviceSchema
 from handler.auth.constants import Scope
-from handler.database import db_device_handler, db_device_save_sync_handler
-from handler.filesystem import get_fs_sync_handler
+from handler.database import db_device_handler
 from logger.logger import log
 from models.device import Device, SyncMode
 from utils.router import APIRouter
@@ -79,11 +78,6 @@ def register_device(
                 },
             )
 
-        if payload.reset_syncs:
-            db_device_save_sync_handler.delete_syncs_for_device(
-                device_id=existing_device.id
-            )
-
         db_device_handler.update_last_seen(
             device_id=existing_device.id, user_id=request.user.id
         )
@@ -119,13 +113,6 @@ def register_device(
 
     db_device = db_device_handler.add_device(device)
     log.info(f"Registered device {device_id} for user {request.user.username}")
-
-    # Auto-create sync folders for file_transfer devices
-    if payload.sync_mode == SyncMode.FILE_TRANSFER:
-        try:
-            get_fs_sync_handler().ensure_device_directories(device_id)
-        except Exception:
-            log.warning(f"Failed to create sync directories for device {device_id}")
 
     return DeviceCreateResponse(
         device_id=db_device.id,

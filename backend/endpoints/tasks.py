@@ -7,11 +7,7 @@ from rq.exceptions import NoSuchJobError
 from rq.job import Job, JobStatus
 from rq.registry import FailedJobRegistry, FinishedJobRegistry
 
-from config import (
-    ENABLE_RESCAN_ON_FILESYSTEM_CHANGE,
-    RESCAN_ON_FILESYSTEM_CHANGE_DELAY,
-    TASK_RESULT_TTL,
-)
+from config import TASK_RESULT_TTL
 from decorators.auth import protected_route
 from endpoints.responses import (
     CleanupTaskStatusResponse,
@@ -33,17 +29,7 @@ from handler.redis_handler import (
     low_prio_queue,
     redis_client,
 )
-from tasks.manual.cleanup_missing_roms import cleanup_missing_roms_task
-from tasks.manual.recompute_save_content_hashes import (
-    recompute_save_content_hashes_task,
-)
-from tasks.manual.sync_folder_scan import sync_folder_scan_task
-from tasks.scheduled.cleanup_orphaned_resources import cleanup_orphaned_resources_task
-from tasks.scheduled.cleanup_zip_cache import cleanup_zip_cache_task
-from tasks.scheduled.convert_images_to_webp import convert_images_to_webp_task
-from tasks.scheduled.scan_library import scan_library_task
-from tasks.scheduled.update_launchbox_metadata import update_launchbox_metadata_task
-from tasks.scheduled.update_switch_titledb import update_switch_titledb_task
+from tasks.manual.index_game_host import index_game_host_task
 from tasks.tasks import (
     Task,
     TaskType,
@@ -66,71 +52,14 @@ class ManualTask(ScheduledTask):
     pass
 
 
-scheduled_tasks: list[ScheduledTask] = [
-    ScheduledTask(
-        {
-            "name": "scan_library",
-            "type": TaskType.SCAN,
-            "task": scan_library_task,
-        }
-    ),
-    ScheduledTask(
-        {
-            "name": "update_launchbox_metadata",
-            "type": TaskType.UPDATE,
-            "task": update_launchbox_metadata_task,
-        }
-    ),
-    ScheduledTask(
-        {
-            "name": "update_switch_titledb",
-            "type": TaskType.UPDATE,
-            "task": update_switch_titledb_task,
-        }
-    ),
-    ScheduledTask(
-        {
-            "name": "convert_images_to_webp",
-            "type": TaskType.CONVERSION,
-            "task": convert_images_to_webp_task,
-        }
-    ),
-    ScheduledTask(
-        {
-            "name": "cleanup_zip_cache",
-            "type": TaskType.CLEANUP,
-            "task": cleanup_zip_cache_task,
-        }
-    ),
-    ScheduledTask(
-        {
-            "name": "cleanup_orphaned_resources",
-            "type": TaskType.CLEANUP,
-            "task": cleanup_orphaned_resources_task,
-        }
-    ),
-]
+scheduled_tasks: list[ScheduledTask] = []
 
 manual_tasks: list[ManualTask] = [
     ManualTask(
         {
-            "name": "cleanup_missing_roms",
-            "type": TaskType.CLEANUP,
-            "task": cleanup_missing_roms_task,
-        }
-    ),
-    ManualTask(
-        {
-            "name": "sync_folder_scan",
+            "name": "index_game_host",
             "type": TaskType.SYNC,
-            "task": sync_folder_scan_task,
-        }
-    ),
-    ManualTask(
-        {
-            "name": "recompute_save_content_hashes",
-            "type": TaskType.CLEANUP,
-            "task": recompute_save_content_hashes_task,
+            "task": index_game_host_task,
         }
     ),
 ]
@@ -247,19 +176,6 @@ async def list_tasks(request: Request) -> GroupedTasksDict:
 
     for task in scheduled_tasks:
         grouped_tasks["scheduled"].append(_build_task_info(task["name"], task["task"]))
-
-    # Add the adhoc watcher task
-    grouped_tasks["watcher"].append(
-        TaskInfo(
-            name="filesystem_watcher",
-            type=TaskType.WATCHER,
-            title="Rescan on filesystem change",
-            description=f"Runs a scan when a change is detected in the library path, with a {RESCAN_ON_FILESYSTEM_CHANGE_DELAY} minute delay",
-            enabled=ENABLE_RESCAN_ON_FILESYSTEM_CHANGE,
-            manual_run=False,
-            cron_string="",
-        )
-    )
 
     return grouped_tasks
 
