@@ -6,13 +6,10 @@ from sqlalchemy import create_engine
 
 from config.config_manager import ConfigManager
 from logger.logger import unify_logger
-from models.assets import Save, Screenshot, State  # noqa
 from models.base import BaseModel
-from models.collection import VirtualCollection
-from models.firmware import Firmware  # noqa
-from models.music import MusicFavoriteTrack, MusicPlaylist, MusicPlaylistTrack  # noqa
-from models.platform import Platform  # noqa
-from models.rom import Rom, RomFacets, RomMetadata, SiblingRom  # noqa
+from models.catalog import CatalogGame, CatalogGameGenre, CatalogGamePlatform  # noqa
+from models.game_activity import GameAsset, GamePlaySession  # noqa
+from models.game_source import GameHost, GameSource  # noqa
 from models.user import User  # noqa
 
 # this is the Alembic Config object, which provides
@@ -35,13 +32,6 @@ target_metadata = BaseModel.metadata
 
 # Ignore specific models when running migrations
 def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "table" and name in [
-        SiblingRom.__tablename__,
-        VirtualCollection.__tablename__,
-        RomMetadata.__tablename__,
-    ]:  # Virtual table
-        return False
-
     # Skip DB-specific search indexes in autogenerate
     # to avoid false drop/create operations
     if type_ == "index" and name in (
