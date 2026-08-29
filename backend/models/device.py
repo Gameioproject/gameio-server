@@ -11,7 +11,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from models.base import BaseModel
 
 if TYPE_CHECKING:
-    from models.device_save_sync import DeviceSaveSync
     from models.user import User
 
 
@@ -66,8 +65,3 @@ class Device(BaseModel):
     last_seen: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     user: Mapped[User] = relationship(lazy="joined")
-    save_syncs: Mapped[list[DeviceSaveSync]] = relationship(
-        back_populates="device",
-        cascade="all, delete-orphan",
-        lazy="raise",
-    )

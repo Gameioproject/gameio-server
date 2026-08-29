@@ -23,11 +23,42 @@ Create Date: 2026-06-16 00:00:00.000000
 
 """
 
+import re
+
 import sqlalchemy as sa
 from alembic import op
 
-from models.rom import NAME_SORT_KEY_MAX_LENGTH, compute_name_sort_key
 from utils.database import is_mariadb, is_mysql, is_postgresql
+
+NAME_SORT_KEY_MAX_LENGTH = 500
+ARTICLES = (
+    "the",
+    "a",
+    "an",
+    "le",
+    "la",
+    "les",
+    "el",
+    "los",
+    "las",
+    "il",
+    "lo",
+    "gli",
+    "der",
+    "die",
+    "das",
+    "het",
+)
+ARTICLE_PREFIX_RE = re.compile(rf"^({'|'.join(ARTICLES)})\s+")
+DIGIT_RUN_RE = re.compile(r"\d+")
+
+
+def compute_name_sort_key(name: str | None) -> str:
+    value = (name or "").lower()
+    value = ARTICLE_PREFIX_RE.sub("", value).strip()
+    value = DIGIT_RUN_RE.sub(lambda m: m.group(0).zfill(12), value)
+    return value[:NAME_SORT_KEY_MAX_LENGTH]
+
 
 # revision identifiers, used by Alembic.
 revision = "0084_add_roms_search_index"

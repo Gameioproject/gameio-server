@@ -9,7 +9,10 @@ Create Date: 2025-01-02 18:58:55.557123
 import sqlalchemy as sa
 from alembic import op
 
-from handler.metadata.ss_handler import SCREENSAVER_PLATFORM_LIST
+try:
+    from handler.metadata.ss_handler import SCREENSAVER_PLATFORM_LIST
+except ImportError:  # The ScreenScraper handler is gone; nothing left to backfill.
+    SCREENSAVER_PLATFORM_LIST = {}
 
 # revision identifiers, used by Alembic.
 revision = "0036_screenscraper_platforms_id"
