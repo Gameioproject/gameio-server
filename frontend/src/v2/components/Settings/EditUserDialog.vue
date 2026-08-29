@@ -2,7 +2,7 @@
 // EditUserDialog — edit a user's profile AND access in one place. Profile
 // fields (username/password/email/avatar) plus an Access section that replaces
 // the old role picker: an Admin toggle, and for non-admins the permission
-// group and the platforms hidden from them. Emitter-driven
+// group. Emitter-driven
 // (`showEditUserDialog`).
 import { RBtn, RIcon, RSelect, RSwitch, RTextField } from "@v2/lib";
 import type { Emitter } from "mitt";
@@ -10,19 +10,15 @@ import { computed, inject, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { OverrideSchemaIO, PermAction, PermEntity } from "@/__generated__";
 import permissionsApi from "@/services/api/permissions";
-import platformApi from "@/services/api/platform";
 import userApi from "@/services/api/user";
 import storeAuth from "@/stores/auth";
 import storePermissionGroups from "@/stores/permissionGroups";
-import type { Platform } from "@/stores/platforms";
 import storeUsers from "@/stores/users";
 import type { Events } from "@/types/emitter";
 import type { UserItem } from "@/types/user";
 import { useSnackbar } from "@/v2/composables/useSnackbar";
 import RDialog from "@/v2/lib/overlays/RDialog/RDialog.vue";
 import { userAvatarUrl } from "@/v2/utils/userAvatar";
-import HiddenGamesPicker from "./HiddenGamesPicker.vue";
-import HiddenPlatformsPicker from "./HiddenPlatformsPicker.vue";
 import OverridesMatrix from "./OverridesMatrix.vue";
 
 defineOptions({ inheritAttrs: false });
@@ -43,11 +39,8 @@ const fileInputRef = ref<HTMLInputElement | null>(null);
 
 // Access section.
 const isAdmin = ref(false);
-const platforms = ref<Platform[]>([]);
 const groupId = ref<number | null>(null);
 const originalGroupId = ref<number | null>(null);
-const hiddenPlatformIds = ref<number[]>([]);
-const originalHiddenPlatformIds = ref<number[]>([]);
 
 // Advanced: per-user overrides + per-game hiding.
 const showAdvanced = ref(false);
@@ -55,8 +48,6 @@ const entities = ref<PermEntity[]>([]);
 const actions = ref<PermAction[]>([]);
 const overrides = ref<OverrideSchemaIO[]>([]);
 const originalOverrides = ref<OverrideSchemaIO[]>([]);
-const hiddenRomIds = ref<number[]>([]);
-const originalHiddenRomIds = ref<number[]>([]);
 
 function overridesKey(list: OverrideSchemaIO[]): string {
   return JSON.stringify(
@@ -83,12 +74,6 @@ const groupItems = computed(() =>
   groupsStore.groups.map((g) => ({ title: g.name, value: g.id })),
 );
 
-const sortedPlatforms = computed(() =>
-  [...platforms.value].sort((a, b) =>
-    a.display_name.localeCompare(b.display_name),
-  ),
-);
-
 emitter?.on("showEditUserDialog", async (toEdit) => {
   user.value = { ...toEdit, password: "", avatar: undefined };
   confirmPassword.value = "";
@@ -98,32 +83,16 @@ emitter?.on("showEditUserDialog", async (toEdit) => {
   show.value = true;
 
   try {
-    const [perms, , platformsResp] = await Promise.all([
+    const [perms] = await Promise.all([
       permissionsApi.fetchUserPermissions(toEdit.id),
       groupsStore.ensureLoaded(),
-      platforms.value.length
-        ? Promise.resolve(null)
-        : platformApi.getPlatforms(),
       ensureCatalog(),
     ]);
-    if (platformsResp) platforms.value = platformsResp.data;
     // A null group means the user follows the server default group; show it
     // as selected so the picker never displays a meaningless empty option.
     const defaultGroupId = groupsStore.defaultGroup?.id ?? null;
     groupId.value = perms.data.permission_group_id ?? defaultGroupId;
     originalGroupId.value = groupId.value;
-
-    const hiddenPlatforms = perms.data.hidden
-      .filter((h) => h.entity === "platforms")
-      .map((h) => h.entity_id);
-    hiddenPlatformIds.value = [...hiddenPlatforms];
-    originalHiddenPlatformIds.value = [...hiddenPlatforms];
-
-    const hiddenRoms = perms.data.hidden
-      .filter((h) => h.entity === "roms")
-      .map((h) => h.entity_id);
-    hiddenRomIds.value = [...hiddenRoms];
-    originalHiddenRomIds.value = [...hiddenRoms];
 
     overrides.value = perms.data.overrides.map((o) => ({ ...o }));
     originalOverrides.value = perms.data.overrides.map((o) => ({ ...o }));
@@ -170,32 +139,6 @@ function previewImage(event: Event) {
   reader.readAsDataURL(file);
 }
 
-function diffHidden(
-  entity: PermEntity,
-  current: number[],
-  original: number[],
-  userId: number,
-): Promise<unknown>[] {
-  const added = current.filter((id) => !original.includes(id));
-  const removed = original.filter((id) => !current.includes(id));
-  return [
-    ...added.map((id) =>
-      permissionsApi.addHiddenEntity({
-        entity,
-        entity_id: id,
-        user_id: userId,
-      }),
-    ),
-    ...removed.map((id) =>
-      permissionsApi.removeHiddenEntity({
-        entity,
-        entity_id: id,
-        user_id: userId,
-      }),
-    ),
-  ];
-}
-
 async function save() {
   if (!user.value) return;
   submitting.value = true;
@@ -223,20 +166,6 @@ async function save() {
         });
         if (groupChanged) nextGroupId = groupId.value;
       }
-      await Promise.all([
-        ...diffHidden(
-          "platforms",
-          hiddenPlatformIds.value,
-          originalHiddenPlatformIds.value,
-          userId,
-        ),
-        ...diffHidden(
-          "roms",
-          hiddenRomIds.value,
-          originalHiddenRomIds.value,
-          userId,
-        ),
-      ]);
     }
 
     snackbar.success(t("settings.user-updated", { username: data.username }), {
@@ -396,15 +325,6 @@ function close() {
               hide-details
             />
           </div>
-          <div class="r-v2-user-dialog__field">
-            <span class="r-v2-user-dialog__field-label">
-              {{ t("settings.hidden-platforms") }}
-            </span>
-            <HiddenPlatformsPicker
-              v-model="hiddenPlatformIds"
-              :platforms="sortedPlatforms"
-            />
-          </div>
 
           <RBtn
             block
@@ -433,12 +353,6 @@ function close() {
                 :entities="entities"
                 :actions="actions"
               />
-            </div>
-            <div class="r-v2-user-dialog__field">
-              <span class="r-v2-user-dialog__field-label">
-                {{ t("settings.hidden-games") }}
-              </span>
-              <HiddenGamesPicker v-model="hiddenRomIds" />
             </div>
           </template>
         </template>

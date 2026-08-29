@@ -80,34 +80,10 @@ const groups = computed<Group[]>(() => {
       label: t("settings.group-library"),
       entries: [
         {
-          icon: "mdi-radar",
-          label: t("scan.scan"),
-          to: { name: ROUTES.SCAN },
-          visible: scopes.value.includes("platforms.write"),
-        },
-        {
-          icon: "mdi-cloud-upload-outline",
-          label: t("common.upload-roms"),
-          to: { name: ROUTES.UPLOAD },
+          icon: "mdi-cloud-download-outline",
+          label: t("catalog.hosts-title"),
+          to: { name: ROUTES.DOWNLOAD_HOSTS },
           visible: scopes.value.includes("roms.write"),
-        },
-        {
-          icon: "mdi-table-cog",
-          label: t("common.library-management"),
-          to: { name: ROUTES.LIBRARY_MANAGEMENT },
-          visible: scopes.value.includes("platforms.write"),
-        },
-        {
-          icon: "mdi-magnify-scan",
-          label: t("settings.scan-settings"),
-          to: { name: ROUTES.SCAN_SETTINGS },
-          visible: scopes.value.includes("platforms.write"),
-        },
-        {
-          icon: "mdi-database-cog-outline",
-          label: t("scan.metadata-sources"),
-          to: { name: ROUTES.METADATA_SOURCES },
-          visible: isAdmin.value,
         },
         {
           icon: "mdi-key-variant",
@@ -126,18 +102,6 @@ const groups = computed<Group[]>(() => {
           label: t("common.administration"),
           to: { name: ROUTES.ADMINISTRATION },
           visible: scopes.value.includes("users.write"),
-        },
-        {
-          icon: "mdi-access-point",
-          label: t("activity.active-sessions"),
-          to: { name: ROUTES.ACTIVITY },
-          visible: true,
-        },
-        {
-          icon: "mdi-server",
-          label: t("common.server-stats"),
-          to: { name: ROUTES.SERVER_STATS },
-          visible: isAdmin.value,
         },
         {
           icon: "mdi-text-box-search-outline",
