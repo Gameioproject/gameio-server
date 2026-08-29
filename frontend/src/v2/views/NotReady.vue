@@ -2,15 +2,11 @@
 import { RBtn } from "@v2/lib";
 import { useI18n } from "vue-i18n";
 import { useRoute } from "vue-router";
-import { useUiVersion } from "@/composables/useUiVersion";
 
 const { t } = useI18n();
 const route = useRoute();
-const uiVersion = useUiVersion();
 
-function switchToV1() {
-  uiVersion.value = "v1";
-}
+function switchToV1() {}
 </script>
 
 <template>
