@@ -51,6 +51,18 @@ class Collection(BaseModel):
         return len(self.games)
 
     @property
+    def rom_ids(self) -> list[int]:
+        """Classic per-platform ids, for clients that still speak the ROM library API."""
+        from handler.compat.argosy import rom_id
+
+        return sorted(
+            rid
+            for g in self.games
+            for slug in g.platform_slugs
+            if (rid := rom_id(g.id, slug)) is not None
+        )
+
+    @property
     def url_covers(self) -> list[str]:
         return [g.url_cover_small for g in self.games if g.url_cover_small]
 

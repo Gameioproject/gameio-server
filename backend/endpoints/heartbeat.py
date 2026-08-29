@@ -29,6 +29,7 @@ async def heartbeat() -> HeartbeatResponse:
             "VERSION": get_version(),
             "SHOW_SETUP_WIZARD": len(db_user_handler.get_admin_users()) == 0
             and not DISABLE_SETUP_WIZARD,
+            "CATALOG_ONLY": True,
         },
         "METADATA_SOURCES": {
             "ANY_SOURCE_ENABLED": False,

@@ -81,6 +81,27 @@ class DBCollectionsHandler(DBBaseHandler):
         )
 
     @begin_session
+    def get_or_create_favorite_collection(
+        self,
+        user_id: int,
+        session: Session = None,  # type: ignore
+    ) -> Collection:
+        favorites = session.scalar(
+            select(Collection).filter_by(is_favorite=True, user_id=user_id).limit(1)
+        )
+        if favorites is None:
+            favorites = Collection(
+                name="Favorites",
+                description="",
+                is_public=False,
+                is_favorite=True,
+                user_id=user_id,
+            )
+            session.add(favorites)
+            session.flush()
+        return favorites
+
+    @begin_session
     @with_games
     def get_collections(
         self,
@@ -165,6 +186,33 @@ class DBCollectionsHandler(DBBaseHandler):
         )
         if result.rowcount > 0:
             self._touch(session, id)
+        session.expire_all()
+        return session.scalar(query.filter_by(id=id).limit(1))
+
+    @begin_session
+    @with_games
+    def set_collection_games(
+        self,
+        id: int,
+        game_ids: list[int],
+        query: Query = None,  # type: ignore
+        session: Session = None,  # type: ignore
+    ) -> Collection:
+        """Replace the membership with exactly these catalog game ids."""
+        session.execute(
+            delete(CollectionGame).where(CollectionGame.collection_id == id)
+        )
+        wanted = set(
+            session.scalars(
+                select(CatalogGame.id).where(CatalogGame.id.in_(game_ids))
+            ).all()
+        )
+        if wanted:
+            session.execute(
+                insert(CollectionGame),
+                [{"collection_id": id, "catalog_game_id": gid} for gid in wanted],
+            )
+        self._touch(session, id)
         session.expire_all()
         return session.scalar(query.filter_by(id=id).limit(1))
 
