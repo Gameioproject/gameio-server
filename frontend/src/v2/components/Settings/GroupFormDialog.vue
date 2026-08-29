@@ -10,15 +10,11 @@ import { computed, inject, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import type { GrantSchemaIO, PermAction, PermEntity } from "@/__generated__";
 import permissionsApi from "@/services/api/permissions";
-import platformApi from "@/services/api/platform";
 import storePermissionGroups from "@/stores/permissionGroups";
-import type { Platform } from "@/stores/platforms";
 import type { Events } from "@/types/emitter";
 import { useSnackbar } from "@/v2/composables/useSnackbar";
 import RDialog from "@/v2/lib/overlays/RDialog/RDialog.vue";
 import { GROUP_COLOR_PALETTE } from "@/v2/utils/groupColor";
-import HiddenGamesPicker from "./HiddenGamesPicker.vue";
-import HiddenPlatformsPicker from "./HiddenPlatformsPicker.vue";
 import PermissionsMatrix from "./PermissionsMatrix.vue";
 
 defineOptions({ inheritAttrs: false });
@@ -40,20 +36,6 @@ const color = ref<string>(GROUP_COLOR_PALETTE[0]);
 const palette = GROUP_COLOR_PALETTE;
 const grants = ref<GrantSchemaIO[]>([]);
 
-// Group-level hidden entities (members inherit these; per-user overrides on
-// top still apply). Diffed against the originals on save.
-const platforms = ref<Platform[]>([]);
-const hiddenPlatformIds = ref<number[]>([]);
-const originalHiddenPlatformIds = ref<number[]>([]);
-const hiddenRomIds = ref<number[]>([]);
-const originalHiddenRomIds = ref<number[]>([]);
-
-const sortedPlatforms = computed(() =>
-  [...platforms.value].sort((a, b) =>
-    a.display_name.localeCompare(b.display_name),
-  ),
-);
-
 const entities = ref<PermEntity[]>([]);
 const actions = ref<PermAction[]>([]);
 
@@ -68,42 +50,6 @@ async function ensureCatalog() {
   }
 }
 
-async function ensurePlatforms() {
-  if (platforms.value.length) return;
-  try {
-    const { data } = await platformApi.getPlatforms();
-    platforms.value = data;
-  } catch (err) {
-    console.error("Failed to load platforms", err);
-  }
-}
-
-function diffHidden(
-  entity: PermEntity,
-  current: number[],
-  original: number[],
-  groupId: number,
-): Promise<unknown>[] {
-  const added = current.filter((id) => !original.includes(id));
-  const removed = original.filter((id) => !current.includes(id));
-  return [
-    ...added.map((id) =>
-      permissionsApi.addHiddenEntity({
-        entity,
-        entity_id: id,
-        group_id: groupId,
-      }),
-    ),
-    ...removed.map((id) =>
-      permissionsApi.removeHiddenEntity({
-        entity,
-        entity_id: id,
-        group_id: groupId,
-      }),
-    ),
-  ];
-}
-
 emitter?.on("showGroupFormDialog", async (group) => {
   editingId.value = group?.id ?? null;
   isSystem.value = group?.is_system ?? false;
@@ -113,19 +59,7 @@ emitter?.on("showGroupFormDialog", async (group) => {
   color.value = group?.color ?? GROUP_COLOR_PALETTE[0];
   grants.value = group ? group.grants.map((g) => ({ ...g })) : [];
 
-  const hidden = group?.hidden ?? [];
-  const hiddenPlatforms = hidden
-    .filter((h) => h.entity === "platforms")
-    .map((h) => h.entity_id);
-  const hiddenRoms = hidden
-    .filter((h) => h.entity === "roms")
-    .map((h) => h.entity_id);
-  hiddenPlatformIds.value = [...hiddenPlatforms];
-  originalHiddenPlatformIds.value = [...hiddenPlatforms];
-  hiddenRomIds.value = [...hiddenRoms];
-  originalHiddenRomIds.value = [...hiddenRoms];
-
-  await Promise.all([ensureCatalog(), ensurePlatforms()]);
+  await ensureCatalog();
   show.value = true;
 });
 
@@ -144,21 +78,6 @@ async function save() {
       editingId.value !== null
         ? await permissionsApi.updateGroup(editingId.value, body)
         : await permissionsApi.createGroup(body);
-    // Apply hidden-entity diffs against the (now-known) group id.
-    await Promise.all([
-      ...diffHidden(
-        "platforms",
-        hiddenPlatformIds.value,
-        originalHiddenPlatformIds.value,
-        saved.id,
-      ),
-      ...diffHidden(
-        "roms",
-        hiddenRomIds.value,
-        originalHiddenRomIds.value,
-        saved.id,
-      ),
-    ]);
     snackbar.success(t("settings.group-saved", { name: body.name }), {
       icon: "mdi-check-bold",
     });
@@ -273,23 +192,6 @@ async function save() {
             :entities="entities"
             :actions="actions"
           />
-        </div>
-
-        <div class="r-v2-group-dialog__matrix">
-          <span class="r-v2-group-dialog__matrix-label">
-            {{ t("settings.hidden-platforms") }}
-          </span>
-          <HiddenPlatformsPicker
-            v-model="hiddenPlatformIds"
-            :platforms="sortedPlatforms"
-          />
-        </div>
-
-        <div class="r-v2-group-dialog__matrix">
-          <span class="r-v2-group-dialog__matrix-label">
-            {{ t("settings.hidden-games") }}
-          </span>
-          <HiddenGamesPicker v-model="hiddenRomIds" />
         </div>
       </div>
     </template>
