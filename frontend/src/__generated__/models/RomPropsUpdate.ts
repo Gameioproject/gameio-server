@@ -2,9 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type SystemDict = {
-    VERSION: string;
-    SHOW_SETUP_WIZARD: boolean;
-    CATALOG_ONLY: boolean;
+export type RomPropsUpdate = {
+    is_favorite?: (boolean | null);
 };
 

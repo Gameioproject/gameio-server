@@ -13,5 +13,9 @@ export type Body_update_collection_api_collections__id__put = {
      * Updated remote cover URL.
      */
     url_cover?: (string | null);
+    /**
+     * Classic clients: JSON array of per-platform rom ids.
+     */
+    rom_ids?: (string | null);
 };
 
