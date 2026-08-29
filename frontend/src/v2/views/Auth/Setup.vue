@@ -5,21 +5,17 @@
 // The wizard owns all wizard-level state (current step, selection set,
 // admin form, async flight); the per-step components are pure UI that
 // emit input changes back to the orchestrator.
-import { RBtn, RIcon, RImg, RSpinner, RSteps } from "@v2/lib";
-import { computed, onMounted, ref } from "vue";
+import { RBtn, RImg, RSteps } from "@v2/lib";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { refetchCSRFToken } from "@/services/api";
 import identityApi from "@/services/api/identity";
-import setupApi from "@/services/api/setup";
-import type { SetupLibraryInfo } from "@/services/api/setup";
 import userApi from "@/services/api/user";
 import storeAuth from "@/stores/auth";
 import storeHeartbeat from "@/stores/heartbeat";
 import SetupStepAdmin from "@/v2/components/Auth/SetupStepAdmin.vue";
 import type { AdminUserDraft } from "@/v2/components/Auth/SetupStepAdmin.vue";
-import SetupStepMetadata from "@/v2/components/Auth/SetupStepMetadata.vue";
-import SetupStepPlatforms from "@/v2/components/Auth/SetupStepPlatforms.vue";
 import { useSnackbar } from "@/v2/composables/useSnackbar";
 
 const { t } = useI18n();
@@ -37,18 +33,6 @@ const step = ref<1 | 2 | 3>(1);
 const stepDirection = ref<"forward" | "back">("forward");
 
 // Step 1 — library + platforms
-const EMPTY_LIBRARY_INFO: SetupLibraryInfo = {
-  detected_structure: null,
-  existing_platforms: [],
-  supported_platforms: [],
-};
-const libraryInfo = ref<SetupLibraryInfo>({ ...EMPTY_LIBRARY_INFO });
-// Starts true so the first paint shows the spinner, not an empty flash.
-const loadingLibrary = ref(true);
-// Non-null when the library probe failed — the step 1 body swaps to an inline
-// error with a retry instead of silently showing an empty platform list.
-const libraryError = ref<string | null>(null);
-const selectedNewPlatforms = ref<string[]>([]);
 
 // Step 2 — admin user
 const adminUser = ref<AdminUserDraft>({
@@ -64,78 +48,27 @@ const adminFormValid = ref(false);
 // Final submission
 const submitting = ref(false);
 
-const stepTitle = computed(() => {
-  switch (step.value) {
-    case 1:
-      return t("setup.library-structure-step");
-    case 2:
-      return t("setup.admin-user-step");
-    case 3:
-      return t("setup.check-metadata-step");
-    default:
-      return "";
-  }
-});
+const stepTitle = computed(() => t("setup.admin-user-step"));
 
 const canProceed = computed(() => {
-  if (step.value === 1) return !loadingLibrary.value;
-  if (step.value === 2) {
-    const u = adminUser.value;
-    return (
-      adminFormValid.value &&
-      !!u.username &&
-      !!u.password &&
-      !!u.repeatPassword &&
-      u.password === u.repeatPassword
-    );
-  }
-  return true;
+  const u = adminUser.value;
+  return (
+    adminFormValid.value &&
+    !!u.username &&
+    !!u.password &&
+    !!u.repeatPassword &&
+    u.password === u.repeatPassword
+  );
 });
-
-const isFirstStep = computed(() => step.value === 1);
-const isLastStep = computed(() => step.value === TOTAL_STEPS);
-
-async function loadLibraryInfo() {
-  loadingLibrary.value = true;
-  libraryError.value = null;
-  try {
-    const { data } = await setupApi.getLibraryInfo();
-    if (data) libraryInfo.value = data;
-  } catch (err) {
-    console.error("Failed to load setup library info:", err);
-    libraryError.value = t("setup.loading-library-failed");
-  } finally {
-    loadingLibrary.value = false;
-  }
-}
-
-function prev() {
-  if (step.value > 1) {
-    stepDirection.value = "back";
-    step.value = (step.value - 1) as 1 | 2 | 3;
-  }
-}
 
 function next() {
   if (!canProceed.value) return;
-  if (step.value < TOTAL_STEPS) {
-    stepDirection.value = "forward";
-    step.value = (step.value + 1) as 1 | 2 | 3;
-    return;
-  }
   void finishWizard();
 }
 
 async function finishWizard() {
   submitting.value = true;
   try {
-    if (selectedNewPlatforms.value.length > 0) {
-      const { data } = await setupApi.createPlatforms(
-        selectedNewPlatforms.value,
-      );
-      snackbar.success(data.message, { icon: "mdi-check-circle" });
-    }
-
     const { data: createdUser } = await userApi.createUser({
       username: adminUser.value.username,
       email: adminUser.value.email,
@@ -185,7 +118,7 @@ async function finishWizard() {
       message?: string;
     };
     snackbar.error(
-      `${t("setup.creating-platforms-failed")}: ${
+      `${t("setup.creating-user-failed")}: ${
         error.response?.data?.detail ??
         error.response?.statusText ??
         error.message ??
@@ -197,8 +130,6 @@ async function finishWizard() {
     submitting.value = false;
   }
 }
-
-onMounted(loadLibraryInfo);
 </script>
 
 <template>
@@ -220,30 +151,7 @@ onMounted(loadLibraryInfo);
     </header>
 
     <div class="r-v2-setup__body">
-      <div v-if="loadingLibrary && step === 1" class="r-v2-setup__loading">
-        <RSpinner />
-        <span>{{ t("setup.loading-library") }}</span>
-      </div>
-
-      <div
-        v-else-if="libraryError && step === 1"
-        class="r-v2-setup__error"
-        role="alert"
-      >
-        <RIcon icon="mdi-alert-circle-outline" :size="32" />
-        <span>{{ libraryError }}</span>
-        <RBtn
-          variant="flat"
-          color="primary"
-          prepend-icon="mdi-refresh"
-          @click="loadLibraryInfo"
-        >
-          {{ t("common.try-again") }}
-        </RBtn>
-      </div>
-
       <Transition
-        v-else
         :name="
           stepDirection === 'forward'
             ? 'r-v2-setup-step-forward'
@@ -251,45 +159,27 @@ onMounted(loadLibraryInfo);
         "
         mode="out-in"
       >
-        <SetupStepPlatforms
-          v-if="step === 1"
-          key="step-1"
-          :library-info="libraryInfo"
-          v-model:selected-new-platforms="selectedNewPlatforms"
-        />
         <SetupStepAdmin
-          v-else-if="step === 2"
-          key="step-2"
+          key="step-1"
           v-model="adminUser"
           v-model:valid="adminFormValid"
           @submit="next"
         />
-        <SetupStepMetadata v-else-if="step === 3" key="step-3" />
       </Transition>
     </div>
 
     <footer class="r-v2-setup__footer">
-      <RBtn
-        v-if="!isFirstStep"
-        variant="text"
-        :disabled="submitting"
-        prepend-icon="mdi-chevron-left"
-        @click="prev"
-      >
-        {{ t("setup.previous") }}
-      </RBtn>
-
       <div class="r-v2-setup__footer-spacer" />
 
       <RBtn
         variant="flat"
         color="primary"
-        :append-icon="isLastStep ? 'mdi-check' : 'mdi-chevron-right'"
+        append-icon="mdi-check"
         :loading="submitting"
         :disabled="!canProceed || submitting"
         @click="next"
       >
-        {{ isLastStep ? t("setup.finish") : t("setup.next") }}
+        {{ t("setup.finish") }}
       </RBtn>
     </footer>
   </div>
