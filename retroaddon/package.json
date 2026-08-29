@@ -1,0 +1,20 @@
+{
+  "name": "stremio-retro-games",
+  "version": "1.0.0",
+  "description": "Stremio addon that catalogs retro console games (NES through PS3) from IGDB",
+  "main": "src/server.js",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=22.9"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/server.js",
+    "fetch": "node --env-file-if-exists=.env src/fetch-igdb.js",
+    "fetch:full": "node --env-file-if-exists=.env src/fetch-igdb.js --full"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.7.0",
+    "stremio-addon-sdk": "^1.6.10"
+  }
+}

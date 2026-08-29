@@ -1,0 +1,25 @@
+services:
+  addon:
+    build: .
+    ports:
+      - "7000:7000"
+    env_file: .env
+    environment:
+      DB_PATH: /data/games.db
+    volumes:
+      - retro-data:/data
+    restart: unless-stopped
+
+  # One-off job: `docker compose run --rm fetch` (add `-- --full` for a full re-sync)
+  fetch:
+    build: .
+    env_file: .env
+    environment:
+      DB_PATH: /data/games.db
+    volumes:
+      - retro-data:/data
+    entrypoint: ["node", "src/fetch-igdb.js"]
+    profiles: ["tools"]
+
+volumes:
+  retro-data:
