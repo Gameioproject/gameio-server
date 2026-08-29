@@ -7,6 +7,7 @@ export type CollectionSchema = {
     name: string;
     description: string;
     game_igdb_ids?: Array<number>;
+    rom_ids?: Array<number>;
     game_count?: number;
     url_covers?: Array<string>;
     url_cover: (string | null);
