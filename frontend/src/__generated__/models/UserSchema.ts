@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { RAProgression } from './RAProgression';
 import type { Role } from './Role';
 export type UserSchema = {
     id: number;
@@ -16,7 +15,7 @@ export type UserSchema = {
     last_login: (string | null);
     last_active: (string | null);
     ra_username?: (string | null);
-    ra_progression?: (RAProgression | null);
+    ra_progression?: (Record<string, any> | null);
     ui_settings?: (Record<string, any> | null);
     current_device_id?: (string | null);
     created_at: string;

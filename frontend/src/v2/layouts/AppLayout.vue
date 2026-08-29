@@ -18,38 +18,23 @@ import {
   watch,
 } from "vue";
 import { useRouter } from "vue-router";
-import storeCollections from "@/stores/collections";
-import storePlatforms from "@/stores/platforms";
-import { useStreamingStore } from "@/stores/streaming";
 import AppNav from "@/v2/components/AppShell/AppNav.vue";
 import BackgroundArt from "@/v2/components/AppShell/BackgroundArt.vue";
 import BottomNav from "@/v2/components/AppShell/BottomNav.vue";
 import CrtOverlay from "@/v2/components/AppShell/CrtOverlay.vue";
 import GlobalDialogs from "@/v2/components/Dialogs/GlobalDialogs.vue";
-import SoundtrackMiniPlayer from "@/v2/components/Soundtrack/MiniPlayer.vue";
 import { BACKGROUND_ART_KEY } from "@/v2/composables/useBackgroundArt";
 import { installBreakpointAttribute } from "@/v2/composables/useBreakpoint";
 import { installPermissionsHydration } from "@/v2/composables/useCan";
 import { useDebugMode } from "@/v2/composables/useDebugMode";
-import { installGalleryProvenance } from "@/v2/composables/useGalleryProvenance";
 import { useGamepad } from "@/v2/composables/useGamepad";
 import { useGlobalHotkeys } from "@/v2/composables/useGlobalHotkeys";
 import { useInputModality } from "@/v2/composables/useInputModality";
 import { installOverlayRouteDismiss } from "@/v2/composables/useOverlayRouteDismiss";
-import { prefetchPlatformIcons } from "@/v2/composables/usePlatformIconCache";
 import { useReducedMotion } from "@/v2/composables/useReducedMotion";
-import { installScanLifecycle } from "@/v2/composables/useScanLifecycle";
 import { installBackMorph } from "@/v2/composables/useViewTransition";
 
 installPermissionsHydration();
-// Global scan socket → store wiring so `scanning` flips back to false on
-// `scan:done` / `scan:done_ko` and `scanStats` keeps ticking from any
-// route the user is on (navbar indicator + /scan view consume the same
-// store state).
-installScanLifecycle();
-// Mirror useBreakpoint() refs onto <html data-bp="…"> so scoped styles
-// can branch on viewport via `html[data-bp~="xs"] .foo { … }` instead of
-// hardcoding `@media (max-width: …)` values across every SFC.
 installBreakpointAttribute();
 
 // Reduced-motion mode: mirror the flag onto <html> so global CSS can drop
@@ -66,10 +51,6 @@ watch(
   },
   { immediate: true },
 );
-
-const collectionsStore = storeCollections();
-const platformsStore = storePlatforms();
-const streamingStore = useStreamingStore();
 
 // Developer debug overlay — opt-in via Settings → Developer (per-device).
 // Lazily loaded so its chunk (and the vueuse perf hooks it pulls in) is only
@@ -119,7 +100,6 @@ const { install: installGlobalHotkeys } = useGlobalHotkeys();
 const router = useRouter();
 
 let removeBackMorph: (() => void) | null = null;
-let removeGalleryProvenance: (() => void) | null = null;
 let removeOverlayRouteDismiss: (() => void) | null = null;
 
 onMounted(() => {
@@ -134,44 +114,14 @@ onMounted(() => {
   removeBackMorph = installBackMorph(router);
   // Tells GameDetails whether the user clicked through from a gallery, so the
   // prev/next arrows don't step through a list the user has already left.
-  removeGalleryProvenance = installGalleryProvenance(router);
   // Hydrate collections (incl. favoriteCollection) so per-ROM favorite
   // state resolves on direct navigation to /rom/:id without going
   // through Home / Collections first. v1 did this in `Main.vue`.
-  if (collectionsStore.allCollections.length === 0) {
-    void collectionsStore.fetchCollections();
-  }
-  // Smart collections too, so GameDetails can enrich a ROM's smart-collection
-  // tiles (cover mosaic + rom count) on direct navigation instead of falling
-  // back to a countless, coverless entry.
-  if (collectionsStore.smartCollections.length === 0) {
-    void collectionsStore.fetchSmartCollections();
-  }
-  // Hydrate platforms for the same reason — views like MissingGames,
-  // GameDetails, etc. read `platformsStore.get(id)` to resolve a
-  // platform's display name and slug. Without this, direct loads of
-  // those views in v2 see undefined slugs and icons fall through to
-  // `default.ico`. v1 ran this in `Main.vue`; v2's AppLayout owns the
-  // same responsibility. Once the store is populated, kick off a
-  // background prefetch of every platform's icon so the in-memory
-  // blob cache is ready by the time any picker / table renders.
-  if (platformsStore.allPlatforms.length === 0) {
-    void platformsStore.fetchPlatforms().then(() => {
-      prefetchPlatformIcons(platformsStore.allPlatforms.map((p) => p.slug));
-    });
-  } else {
-    prefetchPlatformIcons(platformsStore.allPlatforms.map((p) => p.slug));
-  }
-
-  // Streaming config is fetched once on app load
-  void streamingStore.fetchConfig();
 });
 
 onBeforeUnmount(() => {
   removeBackMorph?.();
   removeBackMorph = null;
-  removeGalleryProvenance?.();
-  removeGalleryProvenance = null;
   removeOverlayRouteDismiss?.();
   removeOverlayRouteDismiss = null;
   if (bgTimer !== null) {
@@ -201,7 +151,6 @@ onBeforeUnmount(() => {
     </div>
 
     <GlobalDialogs />
-    <SoundtrackMiniPlayer />
     <DebugOverlay v-if="debugEnabled" />
     <CrtOverlay />
   </div>

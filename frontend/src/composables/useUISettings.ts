@@ -63,6 +63,9 @@ export const UI_SETTINGS_KEYS = {
 
   // Platforms drawer
   platformsGroupBy: { key: "settings.platformsGroupBy", default: null },
+  // Comma-separated platform slugs: the user's display order and the hidden ones.
+  platformOrder: { key: "settings.platformOrder", default: "" },
+  hiddenPlatforms: { key: "settings.hiddenPlatforms", default: "" },
 
   // Gallery section
   groupRoms: { key: "settings.groupRoms", default: true },
