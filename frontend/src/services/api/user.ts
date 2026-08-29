@@ -1,7 +1,6 @@
 import type {
   Body_add_user_api_users_post as AddUserInput,
   Body_create_user_from_invite_api_users_register_post as RegisterUserInput,
-  Body_refresh_retro_achievements_api_users__id__ra_refresh_post as RefreshRetroAchievementsInput,
   InviteLinkSchema,
   UserSchema,
 } from "@/__generated__";
@@ -94,17 +93,6 @@ async function deleteUser(user: UserSchema) {
   return api.delete(`/users/${user.id}`);
 }
 
-async function refreshRetroAchievements({
-  id,
-  incremental = false,
-}: {
-  id: number;
-  incremental?: boolean;
-}) {
-  const payload: RefreshRetroAchievementsInput = { incremental };
-  return api.post<void>(`/users/${id}/ra/refresh`, payload);
-}
-
 export default {
   createUser,
   createInviteLink,
@@ -114,5 +102,4 @@ export default {
   fetchCurrentUser,
   updateUser,
   deleteUser,
-  refreshRetroAchievements,
 };

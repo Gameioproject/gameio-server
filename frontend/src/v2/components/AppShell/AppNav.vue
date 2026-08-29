@@ -12,7 +12,6 @@
 import { RSliderBtnGroup, RImg } from "@v2/lib";
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import ScanningIndicator from "@/v2/components/AppShell/ScanningIndicator.vue";
 import UserMenu from "@/v2/components/AppShell/UserMenu.vue";
 import { useNavDestinations } from "@/v2/composables/useNavDestinations";
 
@@ -76,7 +75,6 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="r-v2-nav__right">
-        <ScanningIndicator />
         <UserMenu />
       </div>
     </nav>
