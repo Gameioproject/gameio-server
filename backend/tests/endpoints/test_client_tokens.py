@@ -181,7 +181,7 @@ class TestClientTokenAuth:
 
         # Use the client token to hit a protected endpoint
         response = client.get(
-            "/api/platforms",
+            "/api/catalog",
             headers={"Authorization": f"Bearer {raw_token}"},
         )
         assert response.status_code == status.HTTP_200_OK
@@ -210,7 +210,7 @@ class TestClientTokenAuth:
             )
 
         response = client.get(
-            "/api/platforms",
+            "/api/catalog",
             headers={"Authorization": f"Bearer {raw_token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -230,7 +230,7 @@ class TestClientTokenAuth:
         )
 
         response = client.get(
-            "/api/platforms",
+            "/api/catalog",
             headers={"Authorization": f"Bearer {raw_token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -243,9 +243,9 @@ class TestClientTokenAuth:
         )
         raw_token = create_resp.json()["raw_token"]
 
-        # roms.read should allow listing platforms? No -- need platforms.read
+        # roms.read does not cover the users scope.
         response = client.get(
-            "/api/platforms",
+            "/api/users",
             headers={"Authorization": f"Bearer {raw_token}"},
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -285,7 +285,7 @@ class TestClientTokenAuth:
         db_user_handler.update_user(admin_user.id, {"enabled": False})
 
         response = client.get(
-            "/api/platforms",
+            "/api/catalog",
             headers={"Authorization": f"Bearer {raw_token}"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
@@ -295,7 +295,7 @@ class TestClientTokenAuth:
 
     def test_invalid_token_format(self, client, admin_user):
         response = client.get(
-            "/api/platforms",
+            "/api/catalog",
             headers={"Authorization": "Bearer rmm_invalidgarbage"},
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
