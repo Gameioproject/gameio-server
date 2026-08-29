@@ -12,10 +12,10 @@ from strsimpy.jaro_winkler import JaroWinkler
 
 from handler.redis_handler import async_cache
 from logger.logger import log
-from tasks.scheduled.update_switch_titledb import (
-    SWITCH_PRODUCT_ID_KEY,
-    SWITCH_TITLEDB_INDEX_KEY,
-)
+from models.base import compute_file_name_no_ext, compute_file_name_no_tags
+
+SWITCH_TITLEDB_INDEX_KEY: Final = "romm:switch_titledb"
+SWITCH_PRODUCT_ID_KEY: Final = "romm:switch_product_id"
 
 jarowinkler = JaroWinkler()
 
@@ -271,21 +271,17 @@ class MetadataHandler(abc.ABC):
         return search_term, None
 
     async def _mame_format(self, search_term: str) -> str:
-        from handler.filesystem import fs_rom_handler
-
         index_entry = await async_cache.hget(MAME_XML_KEY, search_term)
         if index_entry:
             index_entry = json.loads(index_entry)
-            search_term = fs_rom_handler.get_file_name_with_no_tags(
+            search_term = compute_file_name_no_tags(
                 index_entry.get("description", search_term)
             )
 
         return search_term
 
     async def _scummvm_format(self, search_term: str) -> str:
-        from handler.filesystem import fs_rom_handler
-
-        search_term = fs_rom_handler.get_file_name_with_no_extension(search_term)
+        search_term = compute_file_name_no_ext(search_term)
         index_entry = await async_cache.hget(SCUMMVM_INDEX_KEY, search_term)
         if index_entry:
             index_entry = json.loads(index_entry)
