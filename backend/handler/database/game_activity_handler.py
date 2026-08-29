@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import datetime
 from typing import TypedDict
 
 from sqlalchemy import delete, func, select
@@ -47,6 +48,33 @@ class DBGameActivityHandler(DBBaseHandler):
         self, session_id: int, session: Session = None  # type: ignore
     ) -> GamePlaySession | None:
         return session.get(GamePlaySession, session_id)
+
+    @begin_session
+    def record_session(
+        self,
+        *,
+        user_id: int,
+        catalog_game_id: int,
+        device_id: str | None,
+        started_at: datetime,
+        ended_at: datetime,
+        duration_seconds: int,
+        session: Session = None,  # type: ignore
+    ) -> GamePlaySession:
+        """A finished sitting reported after the fact by a client."""
+        play = GamePlaySession(
+            user_id=user_id,
+            catalog_game_id=catalog_game_id,
+            device_id=device_id,
+            started_at=started_at,
+            last_activity_at=ended_at,
+            ended_at=ended_at,
+            duration_seconds=duration_seconds,
+        )
+        session.add(play)
+        session.flush()
+        session.refresh(play)
+        return play
 
     @begin_session
     def touch_session(

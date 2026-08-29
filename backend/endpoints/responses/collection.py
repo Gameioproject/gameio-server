@@ -14,6 +14,7 @@ class CollectionSchema(BaseModel):
     name: str
     description: str
     game_igdb_ids: list[int] = []
+    rom_ids: list[int] = []
     game_count: int = 0
     url_covers: list[str] = []
     url_cover: str | None

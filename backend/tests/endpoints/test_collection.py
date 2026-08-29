@@ -117,13 +117,8 @@ class TestCollectionEndpoints:
         )
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_smart_and_virtual_collections_are_gone(self, client, access_token: str):
+    def test_smart_and_virtual_collections_are_empty(self, client, access_token: str):
+        # Classic clients still ask; they get nothing rather than an error.
         headers = {"Authorization": f"Bearer {access_token}"}
-        assert client.get("/api/collections/smart", headers=headers).status_code in (
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-        )
-        assert client.get("/api/collections/virtual", headers=headers).status_code in (
-            status.HTTP_404_NOT_FOUND,
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
-        )
+        assert client.get("/api/collections/smart", headers=headers).json() == []
+        assert client.get("/api/collections/virtual", headers=headers).json() == []
