@@ -1,19 +1,15 @@
-from typing import NotRequired, TypedDict, get_type_hints
+from typing import Any
 
 from pydantic import ConfigDict
 from starlette.requests import Request
 
-from handler.metadata.ra_handler import RAUserProgression
 from models.user import Role, User
 from utils.urls import get_public_base_url
 
 from .base import BaseModel, UTCDatetime
 
-RAProgression = TypedDict(  # type: ignore[misc]
-    "RAProgression",
-    {k: NotRequired[v] for k, v in get_type_hints(RAUserProgression).items()},  # type: ignore[misc]
-    total=False,
-)
+# RetroAchievements progression, kept as stored on the user row.
+RAProgression = dict[str, Any]
 
 
 class UserSchema(BaseModel):
