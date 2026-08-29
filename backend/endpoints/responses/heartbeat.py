@@ -4,6 +4,8 @@ from typing import TypedDict
 class SystemDict(TypedDict):
     VERSION: str
     SHOW_SETUP_WIZARD: bool
+    # Tells clients there is no ROM library: games come from the catalog and hosts.
+    CATALOG_ONLY: bool
 
 
 class MetadataSourcesDict(TypedDict):

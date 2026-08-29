@@ -158,6 +158,31 @@ class DBCatalogHandler(DBBaseHandler):
         return {"game": game, "sources": sources.get(game.id, [])}
 
     @begin_session
+    def get_game(
+        self,
+        game_id: int,
+        session: Session = None,  # type: ignore
+    ) -> CatalogGameMatch | None:
+        game = session.get(CatalogGame, game_id)
+        if game is None:
+            return None
+        sources = self._sources_by_game(session, [game.id])
+        return {"game": game, "sources": sources.get(game.id, [])}
+
+    @begin_session
+    def get_platform_pairs(
+        self,
+        session: Session = None,  # type: ignore
+    ) -> list[tuple[int, str]]:
+        """Every (game id, platform slug) the catalog holds."""
+        rows = session.execute(
+            select(
+                CatalogGamePlatform.catalog_game_id, CatalogGamePlatform.platform_slug
+            )
+        ).all()
+        return [(game_id, slug) for game_id, slug in rows]
+
+    @begin_session
     def get_games_of_platform(
         self,
         platform_slug: str,

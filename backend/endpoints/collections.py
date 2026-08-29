@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from io import BytesIO
 from typing import Annotated
@@ -15,6 +16,7 @@ from exceptions.endpoint_exceptions import (
     CollectionPermissionError,
 )
 from handler.auth.constants import Scope
+from handler.compat.argosy import split_rom_id
 from handler.database import db_collection_handler
 from handler.filesystem import fs_resource_handler
 from handler.filesystem.assets_handler import validate_image_upload
@@ -118,6 +120,9 @@ def get_collections(
             description="Filter collections updated after this datetime (ISO 8601 format with timezone information)."
         ),
     ] = None,
+    is_favorite: Annotated[
+        bool | None, Query(description="Only the favorites collection (or all others)")
+    ] = None,
 ) -> list[CollectionSchema]:
     """Get collections endpoint
 
@@ -130,6 +135,8 @@ def get_collections(
     """
 
     collections = db_collection_handler.get_collections(updated_after=updated_after)
+    if is_favorite is not None:
+        collections = [c for c in collections if c.is_favorite == is_favorite]
 
     return CollectionSchema.for_user(request.user.id, collections)
 
@@ -191,6 +198,9 @@ async def update_collection(
     name: str | None = Form(default=None),
     description: str | None = Form(default=None),
     url_cover: str | None = Form(default=None, description="Updated remote cover URL."),
+    rom_ids: str | None = Form(
+        default=None, description="Classic clients: JSON array of per-platform rom ids."
+    ),
 ) -> CollectionSchema:
     """Update collection endpoint
 
@@ -266,6 +276,16 @@ async def update_collection(
                     raise HTTPException(status_code=400, detail=str(e)) from e
 
     updated_collection = db_collection_handler.update_collection(id, cleaned_data)
+    if rom_ids is not None:
+        try:
+            parsed = [int(v) for v in json.loads(rom_ids)]
+        except (ValueError, TypeError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="rom_ids must be a JSON array of integers",
+            ) from exc
+        game_ids = sorted({split_rom_id(rid)[0] for rid in parsed})
+        updated_collection = db_collection_handler.set_collection_games(id, game_ids)
 
     return CollectionSchema.model_validate(updated_collection)
 
@@ -284,19 +304,7 @@ def _owned_collection(request: Request, id: int) -> Collection:
 
 
 def _favorites_collection(request: Request) -> Collection:
-    """The user's favorites collection, created on first use."""
-    favorites = db_collection_handler.get_favorite_collection(request.user.id)
-    if favorites is not None:
-        return favorites
-    return db_collection_handler.add_collection(
-        Collection(
-            name="Favorites",
-            description="",
-            is_public=False,
-            is_favorite=True,
-            user_id=request.user.id,
-        )
-    )
+    return db_collection_handler.get_or_create_favorite_collection(request.user.id)
 
 
 @protected_route(router.post, "/favorites/games", [Scope.COLLECTIONS_WRITE])
