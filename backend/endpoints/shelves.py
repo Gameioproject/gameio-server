@@ -25,13 +25,8 @@ SHELVES: list[dict[str, Any]] = [
         "params": {"min_rating": 85, "order_by": "rating_count", "order_dir": "desc"},
     },
     {
-        "key": "ready-to-play",
-        "title": "Ready to download",
-        "params": {"owned": True, "order_by": "rating", "order_dir": "desc"},
-    },
-    {
         "key": "hidden-gems",
-        "title": "Hidden gems",
+        "title": "Gems",
         "params": {
             "min_rating": 80,
             "min_rating_count": 5,
