@@ -150,6 +150,43 @@ export default defineConfig(({ mode }) => {
             // nginx merges repeated slashes in production; mirror it so API clients get their assets
             const originalUrl = req.url;
             req.url = req.url.replace(/^\/{2,}/, "/");
+            // A hand-typed short URL for the handheld: lists the debug builds in
+            // public/ newest-first, so nobody has to copy a hashed filename.
+            if (req.url === "/apk" || req.url === "/apk/") {
+              const fs = require("node:fs");
+              const path = require("node:path");
+              const pub = path.join(__dirname, "public");
+              const rows = fs
+                .readdirSync(pub)
+                .filter((f) => f.endsWith(".apk"))
+                .map((f) => ({ f, st: fs.statSync(path.join(pub, f)) }))
+                .sort((a, b) => b.st.mtimeMs - a.st.mtimeMs)
+                .map(({ f, st }) => {
+                  const mb = (st.size / 1048576).toFixed(1);
+                  const when = st.mtime.toISOString().slice(0, 16).replace("T", " ");
+                  return `<a href="/${f}" style="display:block;margin:14px 0;padding:20px 24px;` +
+                    `background:#c2410c;color:#fff;border-radius:12px;text-decoration:none;` +
+                    `font:600 22px system-ui"> ${f}<br>` +
+                    `<span style="font:400 15px system-ui;opacity:.85">${mb} MB &middot; ${when} UTC</span></a>`;
+                })
+                .join("");
+              _res.setHeader("Content-Type", "text/html; charset=utf-8");
+              _res.end(
+                `<meta name="viewport" content="width=device-width,initial-scale=1">` +
+                `<body style="background:#171210;margin:0;padding:24px;font-family:system-ui">` +
+                `<h1 style="color:#f0e7e1;font-size:26px">Argosy builds</h1>` +
+                `<p style="color:#a6968c;font-size:15px">Newest first. Tap to download and install.</p>` +
+                rows + `</body>`,
+              );
+              return;
+            }
+            // Vite has no MIME entry for .apk, and an empty Content-Type makes
+            // browsers sniff the zip magic bytes and save the file as .zip.
+            if (req.url.endsWith(".apk")) {
+              const name = req.url.split("/").pop();
+              _res.setHeader("Content-Type", "application/vnd.android.package-archive");
+              _res.setHeader("Content-Disposition", `attachment; filename="${name}"`);
+            }
             if (env.DEV_LOG_REQUESTS === "true") {
               _res.on("finish", () => {
                 console.log(
