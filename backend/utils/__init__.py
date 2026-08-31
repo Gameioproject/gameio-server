@@ -2,7 +2,7 @@ import uuid
 
 from __version__ import __version__
 
-DEV_VERSION = "5.1.0-lite"
+DEV_VERSION = "5.1.0-gameio"
 
 
 def get_version() -> str:
