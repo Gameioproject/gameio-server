@@ -211,6 +211,8 @@ class DBCatalogHandler(DBBaseHandler):
         exclude_platform_slugs: list[str] | None = None,
         genre: str | None = None,
         min_rating: float | None = None,
+        max_rating_count: int | None = None,
+        min_rating_count: int | None = None,
         year_from: int | None = None,
         year_to: int | None = None,
         owned: bool | None = None,
@@ -255,6 +257,13 @@ class DBCatalogHandler(DBBaseHandler):
             )
         if min_rating is not None:
             query = query.where(CatalogGame.rating >= min_rating)
+        if max_rating_count is not None:
+            query = query.where(
+                (CatalogGame.rating_count.is_(None))
+                | (CatalogGame.rating_count <= max_rating_count)
+            )
+        if min_rating_count is not None:
+            query = query.where(CatalogGame.rating_count >= min_rating_count)
         if year_from is not None:
             query = query.where(CatalogGame.release_year >= year_from)
         if year_to is not None:
@@ -335,6 +344,19 @@ class DBCatalogHandler(DBBaseHandler):
             sections.append({"label": name, "offset": offset, "count": count})
             offset += count
         return sections
+
+    @begin_session
+    def get_random_game(
+        self,
+        min_rating: float,
+        session: Session = None,  # type: ignore
+    ) -> CatalogGame | None:
+        return session.scalar(
+            select(CatalogGame)
+            .where(CatalogGame.rating >= min_rating)
+            .order_by(func.rand())
+            .limit(1)
+        )
 
     @begin_session
     def get_platform_counts(
