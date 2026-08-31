@@ -235,16 +235,6 @@ def get_smart_collections(request: Request) -> list[Any]:
     return []
 
 
-@protected_route(router.get, "/saves", [Scope.ASSETS_READ])
-def get_saves(request: Request) -> list[Any]:
-    """Saves live per catalog game under /api/catalog; the classic list is always empty."""
-    return []
-
-
-@protected_route(router.get, "/states", [Scope.ASSETS_READ])
-def get_states(request: Request) -> list[Any]:
-    return []
-
 
 class PlaySessionEntry(BaseModel):
     rom_id: int | None = None
