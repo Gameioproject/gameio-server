@@ -78,6 +78,9 @@ class GameAsset(BaseModel):
         String(length=EMULATOR_MAX_LENGTH), default=""
     )
     file_name: Mapped[str] = mapped_column(String(length=ASSET_FILE_NAME_MAX_LENGTH))
+    # Classic-protocol save channel; None is the default channel.
+    slot: Mapped[str | None] = mapped_column(String(length=64), default=None)
+    content_hash: Mapped[str | None] = mapped_column(String(length=64), default=None)
     content: Mapped[bytes] = mapped_column(LargeBinary)
     size: Mapped[int] = mapped_column(Integer, default=0)
     screenshot: Mapped[bytes | None] = mapped_column(LargeBinary)

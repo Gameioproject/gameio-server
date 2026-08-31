@@ -2,6 +2,8 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import TypedDict
 
+import hashlib
+
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
@@ -145,6 +147,22 @@ class DBGameActivityHandler(DBBaseHandler):
         return list(session.scalars(query.order_by(GameAsset.updated_at.desc())))
 
     @begin_session
+    def list_user_assets(
+        self,
+        *,
+        user_id: int,
+        kind: GameAssetKind,
+        session: Session = None,  # type: ignore
+    ) -> list[GameAsset]:
+        return list(
+            session.scalars(
+                select(GameAsset)
+                .where(GameAsset.user_id == user_id, GameAsset.kind == kind)
+                .order_by(GameAsset.updated_at.desc())
+            )
+        )
+
+    @begin_session
     def upsert_asset(
         self,
         *,
@@ -155,6 +173,7 @@ class DBGameActivityHandler(DBBaseHandler):
         file_name: str,
         content: bytes,
         screenshot: bytes | None,
+        slot: str | None = None,
         session: Session = None,  # type: ignore
     ) -> GameAsset:
         asset = session.scalar(
@@ -164,6 +183,7 @@ class DBGameActivityHandler(DBBaseHandler):
                 GameAsset.kind == kind,
                 GameAsset.emulator == emulator,
                 GameAsset.file_name == file_name,
+                GameAsset.slot.is_(None) if slot is None else GameAsset.slot == slot,
             )
         )
         if asset is None:
@@ -173,8 +193,10 @@ class DBGameActivityHandler(DBBaseHandler):
                 kind=kind,
                 emulator=emulator,
                 file_name=file_name,
+                slot=slot,
             )
             session.add(asset)
+        asset.content_hash = hashlib.sha256(content).hexdigest()
         asset.content = content
         asset.size = len(content)
         if screenshot is not None:
