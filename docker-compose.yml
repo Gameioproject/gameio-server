@@ -43,6 +43,10 @@ services:
       - MARIADB_DATABASE=${DB_NAME:-romm}
       - MARIADB_USER=${DB_USER:-romm}
       - MARIADB_PASSWORD=${DB_PASSWD:-romm}
+    # Save blobs travel as single INSERT statements, so the packet ceiling has
+    # to clear MAX_ASSET_BYTES (64 MB) or large uploads drop the connection with
+    # "Server has gone away" instead of a clean error.
+    command: --max-allowed-packet=128M
     volumes:
       - romm-db-dev:/var/lib/mysql
     ports:
