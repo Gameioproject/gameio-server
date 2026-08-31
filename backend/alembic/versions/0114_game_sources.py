@@ -74,7 +74,24 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(["host_id"], ["game_hosts.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("host_id", "path", name="unique_game_source_host_path"),
+        if_not_exists=True,
+    )
+    # MariaDB: UNIQUE(host_id, path) is 4004 bytes in utf8mb4, over InnoDB's
+    # 3072-byte B-tree limit, so it degrades to a HASH index. A hash index
+    # cannot back a foreign key, which breaks the host_id FK (errno 150).
+    # Create an explicit B-tree index on host_id first so the FK has one,
+    # then add the unique constraint (still enforced on the full value).
+    op.create_index(
+        "idx_game_sources_host",
+        "game_sources",
+        ["host_id"],
+        if_not_exists=True,
+    )
+    op.create_index(
+        "unique_game_source_host_path",
+        "game_sources",
+        ["host_id", "path"],
+        unique=True,
         if_not_exists=True,
     )
     op.create_index(
