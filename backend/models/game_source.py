@@ -76,6 +76,9 @@ class GameSource(BaseModel):
     __tablename__ = "game_sources"
     __table_args__ = (
         UniqueConstraint("host_id", "path", name="unique_game_source_host_path"),
+        # Explicit B-tree index on host_id: the composite unique above becomes a
+        # HASH index on MariaDB (utf8mb4 key length) and cannot back the FK.
+        Index("idx_game_sources_host", "host_id"),
         Index("idx_game_sources_game", "catalog_game_id", "id"),
     )
 
