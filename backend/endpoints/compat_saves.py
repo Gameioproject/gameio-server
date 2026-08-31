@@ -240,6 +240,15 @@ def save_content(request: Request, save_id: int) -> Response:
     return _content(request, save_id, GameAssetKind.SAVE)
 
 
+@protected_route(router.get, "/states", [Scope.ASSETS_READ])
+def list_states(
+    request: Request,
+    rom_id: Annotated[int | None, Query()] = None,
+    platform_id: Annotated[int | None, Query()] = None,
+) -> list[dict[str, Any]]:
+    return _list(request, GameAssetKind.STATE, rom_id, platform_id)
+
+
 @protected_route(router.get, "/states/{state_id}", [Scope.ASSETS_READ])
 def get_state(request: Request, state_id: int) -> dict[str, Any]:
     return _serialize(_own_asset(request, state_id, GameAssetKind.STATE))

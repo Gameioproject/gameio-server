@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.mysql import LONGBLOB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import BaseModel
@@ -81,8 +82,15 @@ class GameAsset(BaseModel):
     # Classic-protocol save channel; None is the default channel.
     slot: Mapped[str | None] = mapped_column(String(length=64), default=None)
     content_hash: Mapped[str | None] = mapped_column(String(length=64), default=None)
-    content: Mapped[bytes] = mapped_column(LargeBinary)
+    # Plain LargeBinary is a 64 KB BLOB on MariaDB; a single N64 battery save is
+    # already 290 KB and save states run to megabytes, so both blobs need the
+    # long variant. The ceiling that actually applies is MAX_ASSET_BYTES.
+    content: Mapped[bytes] = mapped_column(
+        LargeBinary().with_variant(LONGBLOB, "mysql", "mariadb")
+    )
     size: Mapped[int] = mapped_column(Integer, default=0)
-    screenshot: Mapped[bytes | None] = mapped_column(LargeBinary)
+    screenshot: Mapped[bytes | None] = mapped_column(
+        LargeBinary().with_variant(LONGBLOB, "mysql", "mariadb")
+    )
 
     game: Mapped[CatalogGame] = relationship(lazy="joined")
