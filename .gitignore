@@ -89,3 +89,6 @@ frontend/.last-run.json
 
 # ruff
 .ruff_cache/
+
+# Debug APKs dropped here to sideload over the LAN; not part of the app.
+frontend/public/*.apk
