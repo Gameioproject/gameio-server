@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi import HTTPException, Request, status
 
 from adapters.services.internet_archive import parse_item_identifier
@@ -14,6 +16,8 @@ from handler.database import db_game_source_handler
 from handler.redis_handler import low_prio_queue
 from models.game_source import GameHostKind
 from tasks.manual.index_game_host import index_game_host_task
+
+INDEX_LOCK_MAX_AGE = timedelta(hours=1)
 from utils.router import APIRouter
 
 router = APIRouter(
@@ -116,10 +120,17 @@ def index_host(request: Request, host_id: int) -> GameHostIndexSchema:
             detail=f"Hosts of kind {host.kind} cannot be listed; add sources by hand",
         )
     if host.index_started_at is not None:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Game host {host_id} is already being indexed",
-        )
+        started = host.index_started_at
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        age = datetime.now(timezone.utc) - started
+        if age < INDEX_LOCK_MAX_AGE:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Game host {host_id} is already being indexed",
+            )
+        # A run this old means the worker died mid-job (the flag only clears on
+        # completion), so the lock is stale and re-indexing is the recovery.
     db_game_source_handler.mark_index_started(host.id)
     job = low_prio_queue.enqueue(
         index_game_host_task.run,

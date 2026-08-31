@@ -77,12 +77,18 @@ fi
 # watcher's Worker.all() scan dedupe relies on.
 PYTHONPATH="/app/backend:${PYTHONPATH-}" \
 	RQ_REDIS_URL="${REDIS_URL}" \
-	rq worker \
-	--path /app/backend \
-	--worker-class handler.rq_worker.RomMWorker \
-	--pid /tmp/rq_worker.pid \
-	--logging_level "${LOGLEVEL:-INFO}" \
-	high default low &
+	(
+	while true; do
+		rq worker \
+			--path /app/backend \
+			--worker-class handler.rq_worker.RomMWorker \
+			--pid /tmp/rq_worker.pid \
+			--logging_level "${LOGLEVEL:-INFO}" \
+			high default low
+		echo "RQ worker exited (a Redis timeout does this); restarting in 5s..."
+		sleep 5
+	done
+	) &
 
 echo "Starting watcher..."
 watchfiles \
