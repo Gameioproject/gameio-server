@@ -84,26 +84,46 @@ def _roms_for(request: Request, matches, slug: str) -> list[dict[str, Any]]:
     return roms
 
 
+def _roms_any_platform(request: Request, matches) -> list[dict[str, Any]]:
+    """Search results span platforms, so each game is returned under its own first one."""
+    by_slug: dict[str, list[Any]] = {}
+    for match in matches:
+        slugs = [p.platform_slug for p in match["game"].platforms]
+        if not slugs:
+            continue
+        by_slug.setdefault(sorted(slugs)[0], []).append(match)
+    roms: list[dict[str, Any]] = []
+    for slug, group in by_slug.items():
+        roms.extend(_roms_for(request, group, slug))
+    return roms
+
+
 @protected_route(router.get, "/roms", [Scope.ROMS_READ])
 def get_roms(
     request: Request,
     platform_ids: Annotated[str | None, Query()] = None,
     search_term: Annotated[str | None, Query()] = None,
+    owned: Annotated[bool | None, Query()] = None,
     order_by: Annotated[str, Query()] = "id",
     order_dir: Annotated[str, Query()] = "asc",
     limit: Annotated[int, Query(ge=1, le=ROMS_PAGE_MAX_LIMIT)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict[str, Any]:
-    """One page of a platform's games; a client asking for several platforms gets the first."""
+    """One page of a platform's games, or of the whole catalog when searching without one."""
     first = (platform_ids or "").split(",")[0].strip()
+    # A search may span the server, so a platform is only required when browsing.
     if not first.isdigit():
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="platform_ids is required",
-        )
-    slug = _platform_or_404(int(first))
+        if not search_term:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="platform_ids is required unless search_term is given",
+            )
+        slug = None
+    else:
+        slug = _platform_or_404(int(first))
     matches, total = db_catalog_handler.get_games(
         search=search_term,
+        owned=owned,
         platform_slug=slug,
         order_by=CatalogOrderBy.NAME,
         order_dir=CatalogOrderDir.DESC if order_dir == "desc" else CatalogOrderDir.ASC,
@@ -111,11 +131,25 @@ def get_roms(
         offset=offset,
     )
     return {
-        "items": _roms_for(request, matches, slug),
+        "items": _roms_for(request, matches, slug) if slug else _roms_any_platform(request, matches),
         "total": total,
         "limit": limit,
         "offset": offset,
     }
+
+
+@protected_route(router.get, "/roms/sections", [Scope.ROMS_READ])
+def get_rom_sections(
+    request: Request,
+    platform_ids: Annotated[str | None, Query()] = None,
+) -> list[dict[str, Any]]:
+    """The A-Z index for a platform: where each initial starts in name order, and how many.
+
+    Lets a client show the whole alphabet and jump into it without having paged that far.
+    """
+    first = (platform_ids or "").split(",")[0].strip()
+    slug = _platform_or_404(int(first)) if first.isdigit() else None
+    return db_catalog_handler.get_name_sections(platform_slug=slug)
 
 
 @protected_route(router.get, "/roms/identifiers", [Scope.ROMS_READ])
