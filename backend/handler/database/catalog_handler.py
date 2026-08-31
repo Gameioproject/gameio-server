@@ -3,6 +3,8 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from typing import TypedDict
 
+from typing import Any
+
 from sqlalchemy import Select, case, func, select
 from sqlalchemy.orm import Session
 
@@ -298,6 +300,41 @@ class DBCatalogHandler(DBBaseHandler):
         return [
             {"game": game, "sources": sources.get(game.id, [])} for game in games
         ], total or 0
+
+    @begin_session
+    def get_name_sections(
+        self,
+        *,
+        platform_slug: str | None = None,
+        session: Session = None,  # type: ignore
+    ) -> list[dict[str, Any]]:
+        """Per-initial counts in name order, so a client can jump without holding the whole list.
+
+        Returns one entry per leading character with the offset it starts at. Anything that does not
+        start with A-Z is grouped under "#", which is where name ordering puts it.
+        """
+        initial = func.upper(func.substr(CatalogGame.name, 1, 1))
+        label = case(
+            (initial.between("A", "Z"), initial),
+            else_="#",
+        )
+        query = select(label, func.count()).group_by(label)
+        if platform_slug:
+            query = query.join(
+                CatalogGamePlatform,
+                CatalogGamePlatform.catalog_game_id == CatalogGame.id,
+            ).where(CatalogGamePlatform.platform_slug == platform_slug)
+
+        counts = {str(row[0]): int(row[1]) for row in session.execute(query)}
+        # Name order puts "#" ahead of the letters, so offsets accumulate in that order.
+        ordered = ["#"] + [chr(c) for c in range(ord("A"), ord("Z") + 1)]
+        sections: list[dict[str, Any]] = []
+        offset = 0
+        for name in ordered:
+            count = counts.get(name, 0)
+            sections.append({"label": name, "offset": offset, "count": count})
+            offset += count
+        return sections
 
     @begin_session
     def get_platform_counts(
