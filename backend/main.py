@@ -32,6 +32,7 @@ from endpoints.client_tokens import router as client_tokens_router
 from endpoints.collections import router as collections_router
 from endpoints.compat_argosy import router as compat_argosy_router
 from endpoints.compat_saves import router as compat_saves_router
+from endpoints.shelves import router as shelves_router
 from endpoints.configs import router as configs_router
 from endpoints.device import router as device_router
 from endpoints.device_auth import router as device_auth_router
@@ -162,6 +163,7 @@ app.include_router(tasks_router, prefix="/api")
 app.include_router(configs_router, prefix="/api")
 app.include_router(logs_router, prefix="/api")
 # Before collections: /collections/virtual must not read as a collection id.
+app.include_router(shelves_router, prefix="/api")
 app.include_router(compat_argosy_router, prefix="/api")
 app.include_router(compat_saves_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
