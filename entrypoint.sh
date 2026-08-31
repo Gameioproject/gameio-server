@@ -75,11 +75,11 @@ fi
 # queue" log line. The maintenance interval keeps its default (~10 min) so
 # orphaned STARTED jobs and stale workers are still pruned promptly, which the
 # watcher's Worker.all() scan dedupe relies on.
-PYTHONPATH="/app/backend:${PYTHONPATH-}" \
-	RQ_REDIS_URL="${REDIS_URL}" \
-	(
+(
 	while true; do
-		rq worker \
+		PYTHONPATH="/app/backend:${PYTHONPATH-}" \
+			RQ_REDIS_URL="${REDIS_URL}" \
+			rq worker \
 			--path /app/backend \
 			--worker-class handler.rq_worker.RomMWorker \
 			--pid /tmp/rq_worker.pid \
