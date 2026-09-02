@@ -92,3 +92,8 @@ frontend/.last-run.json
 
 # Debug APKs dropped here to sideload over the LAN; not part of the app.
 frontend/public/*.apk
+
+# Published launcher builds. Content-hashed and 70 MB+ each; they belong on a
+# volume the web server mounts, never in the repo or a container image.
+frontend/public/apk/
+frontend/public/*.apk

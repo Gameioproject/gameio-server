@@ -150,32 +150,50 @@ export default defineConfig(({ mode }) => {
             // nginx merges repeated slashes in production; mirror it so API clients get their assets
             const originalUrl = req.url;
             req.url = req.url.replace(/^\/{2,}/, "/");
-            // A hand-typed short URL for the handheld: lists the debug builds in
-            // public/ newest-first, so nobody has to copy a hashed filename.
+            // A hand-typed short URL for the handheld: lists the builds newest-first
+            // so nobody has to copy a hashed filename. Reads public/apk (where
+            // publish-apk.sh writes, matching the /apk/ path nginx serves in
+            // production) and public/ root, which still holds older builds.
             if (req.url === "/apk" || req.url === "/apk/") {
               const fs = require("node:fs");
               const path = require("node:path");
               const pub = path.join(__dirname, "public");
-              const rows = fs
-                .readdirSync(pub)
-                .filter((f) => f.endsWith(".apk"))
-                .map((f) => ({ f, st: fs.statSync(path.join(pub, f)) }))
+              const dirs = [
+                { dir: path.join(pub, "apk"), prefix: "/apk/" },
+                { dir: pub, prefix: "/" },
+              ];
+              const builds = [];
+              for (const { dir, prefix } of dirs) {
+                let names = [];
+                try {
+                  names = fs.readdirSync(dir);
+                } catch {
+                  continue; // public/apk does not exist until something is published
+                }
+                for (const f of names.filter((n) => n.endsWith(".apk"))) {
+                  builds.push({ f, href: prefix + f, st: fs.statSync(path.join(dir, f)) });
+                }
+              }
+              const rows = builds
                 .sort((a, b) => b.st.mtimeMs - a.st.mtimeMs)
-                .map(({ f, st }) => {
+                .map(({ f, href, st }, i) => {
                   const mb = (st.size / 1048576).toFixed(1);
                   const when = st.mtime.toISOString().slice(0, 16).replace("T", " ");
-                  return `<a href="/${f}" style="display:block;margin:14px 0;padding:20px 24px;` +
-                    `background:#c2410c;color:#fff;border-radius:12px;text-decoration:none;` +
-                    `font:600 22px system-ui"> ${f}<br>` +
-                    `<span style="font:400 15px system-ui;opacity:.85">${mb} MB &middot; ${when} UTC</span></a>`;
+                  const bg = i === 0 ? "#FF6B4A" : "#1C232D";
+                  const fg = i === 0 ? "#0B0E13" : "#F3F6F9";
+                  const tag = i === 0 ? " &middot; latest" : "";
+                  return `<a href="${href}" style="display:block;margin:14px 0;padding:20px 24px;` +
+                    `background:${bg};color:${fg};border-radius:12px;text-decoration:none;` +
+                    `font:600 21px system-ui">${f}<br>` +
+                    `<span style="font:400 15px system-ui;opacity:.8">${mb} MB &middot; ${when} UTC${tag}</span></a>`;
                 })
                 .join("");
               _res.setHeader("Content-Type", "text/html; charset=utf-8");
               _res.end(
                 `<meta name="viewport" content="width=device-width,initial-scale=1">` +
-                `<body style="background:#171210;margin:0;padding:24px;font-family:system-ui">` +
-                `<h1 style="color:#f0e7e1;font-size:26px">Argosy builds</h1>` +
-                `<p style="color:#a6968c;font-size:15px">Newest first. Tap to download and install.</p>` +
+                `<body style="background:#07090C;margin:0;padding:24px;font-family:system-ui">` +
+                `<h1 style="color:#F3F6F9;font-size:26px;margin:0 0 6px">Gameio builds</h1>` +
+                `<p style="color:#8B95A3;font-size:15px;margin:0 0 22px">Newest first. Tap to download and install.</p>` +
                 rows + `</body>`,
               );
               return;
