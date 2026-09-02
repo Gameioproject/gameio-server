@@ -60,6 +60,15 @@ server {
         add_header Cache-Control "no-cache";
     }
 
+    # Images and fonts the landing page needs. location = / above matches the bare
+    # root only, so its assets need a prefix location of their own or they fall
+    # through to the web app's index.html.
+    location /brand/ {
+        alias /var/www/landing/brand/;
+        access_log off;
+        add_header Cache-Control "public, max-age=86400";
+    }
+
     # Launcher builds. Served straight off a volume so they never enter the image,
     # and with the real Android media type - an empty one makes browsers sniff the
     # zip magic and save the download as .zip, which installs as a corrupt package.
