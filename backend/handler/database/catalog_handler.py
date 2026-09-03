@@ -46,6 +46,8 @@ class CatalogOrderBy(enum.StrEnum):
     ADDED = "added"
     # The requesting user's most recent play activity; needs `played_by`.
     LAST_PLAYED = "last_played"
+    # A fresh draw per request, for shelves that should not look the same twice.
+    RANDOM = "random"
 
 
 class CatalogOrderDir(enum.StrEnum):
@@ -439,6 +441,9 @@ class DBCatalogHandler(DBBaseHandler):
             )
             .scalar_subquery()
         )
+        if order_by == CatalogOrderBy.RANDOM:
+            # No null-flag or tiebreak: the point is that the order is not stable.
+            return [func.rand()]
         column = {
             CatalogOrderBy.RATING: CatalogGame.rating,
             CatalogOrderBy.NAME: CatalogGame.name,

@@ -22,39 +22,10 @@ SHELVES: list[dict[str, Any]] = [
     {
         "key": "top-rated",
         "title": "Top rated",
-        "params": {"min_rating": 85, "order_by": "rating_count", "order_dir": "desc"},
-    },
-    {
-        "key": "hidden-gems",
-        "title": "Gems",
-        "params": {
-            "min_rating": 80,
-            "min_rating_count": 5,
-            "max_rating_count": 50,
-            "order_by": "rating",
-            "order_dir": "desc",
-        },
-    },
-    {
-        "key": "the-90s",
-        "title": "The 90s",
-        "params": {
-            "year_from": 1990,
-            "year_to": 1999,
-            "min_rating": 78,
-            "order_by": "rating",
-            "order_dir": "desc",
-        },
-    },
-    {
-        "key": "modern-classics",
-        "title": "Modern classics",
-        "params": {
-            "year_from": 2000,
-            "min_rating": 82,
-            "order_by": "rating_count",
-            "order_dir": "desc",
-        },
+        # Drawn at random from everything well rated, so the row differs each
+        # time Home is opened. The client caps the row; the server does not page
+        # a random order, because offsets into a reshuffled set repeat games.
+        "params": {"min_rating": 85, "order_by": "random"},
     },
 ]
 
