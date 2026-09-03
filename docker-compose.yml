@@ -50,7 +50,7 @@ services:
     volumes:
       - gameio-db-dev:/var/lib/mysql
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
 
   gameio-valkey-dev:
     image: valkey/valkey:8
@@ -58,7 +58,7 @@ services:
     restart: unless-stopped
     env_file: .env
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
 
   gameio-postgres-dev:
     image: postgres:16-alpine
@@ -72,7 +72,7 @@ services:
     volumes:
       - postgres-db:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   gameio-authentik-server:
     image: ghcr.io/goauthentik/server:2024.10.4

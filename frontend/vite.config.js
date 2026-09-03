@@ -150,6 +150,11 @@ export default defineConfig(({ mode }) => {
             // nginx merges repeated slashes in production; mirror it so API clients get their assets
             const originalUrl = req.url;
             req.url = req.url.replace(/^\/{2,}/, "/");
+            // nginx serves the landing page at the bare root (location = /) and lets
+            // every other path fall through to the web app; mirror that here.
+            if (req.url === "/" || req.url.startsWith("/?")) {
+              req.url = "/landing.html" + req.url.slice(1);
+            }
             // A hand-typed short URL for the handheld: lists the builds newest-first
             // so nobody has to copy a hashed filename. Reads public/apk (where
             // publish-apk.sh writes, matching the /apk/ path nginx serves in
