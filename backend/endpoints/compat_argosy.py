@@ -110,6 +110,7 @@ def get_roms(
     min_rating_count: Annotated[int | None, Query()] = None,
     year_from: Annotated[int | None, Query()] = None,
     year_to: Annotated[int | None, Query()] = None,
+    hidden_platforms: Annotated[str | None, Query()] = None,
     order_by: Annotated[str, Query()] = "id",
     order_dir: Annotated[str, Query()] = "asc",
     limit: Annotated[int, Query(ge=1, le=ROMS_PAGE_MAX_LIMIT)] = 100,
@@ -119,7 +120,7 @@ def get_roms(
     first = (platform_ids or "").split(",")[0].strip()
     # Searches and filtered shelves span the server, so a platform is only
     # required for a completely unfiltered browse.
-    spans_server = search_term is not None or any(
+    spans_server = search_term is not None or hidden_platforms is not None or any(
         v is not None
         for v in (
             owned, genre, min_rating, max_rating_count, min_rating_count,
@@ -141,7 +142,9 @@ def get_roms(
         "year": CatalogOrderBy.RELEASE_YEAR,
         "added": CatalogOrderBy.ADDED,
         "name": CatalogOrderBy.NAME,
+        "random": CatalogOrderBy.RANDOM,
     }
+    excluded = [p for p in (hidden_platforms or "").split(",") if p.strip()]
     matches, total = db_catalog_handler.get_games(
         search=search_term,
         owned=owned,
@@ -152,6 +155,7 @@ def get_roms(
         year_from=year_from,
         year_to=year_to,
         platform_slug=slug,
+        exclude_platform_slugs=excluded or None,
         order_by=order_map.get(order_by, CatalogOrderBy.NAME),
         order_dir=CatalogOrderDir.DESC if order_dir == "desc" else CatalogOrderDir.ASC,
         limit=limit,
