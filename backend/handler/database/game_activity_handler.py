@@ -176,16 +176,27 @@ class DBGameActivityHandler(DBBaseHandler):
         slot: str | None = None,
         session: Session = None,  # type: ignore
     ) -> GameAsset:
+        # A save's identity is its slot: the launcher uploads one file per channel and
+        # names it from whatever its emulator wrote, so the name may change between
+        # uploads of the same slot. Matching on it grew a second row per slot, and the
+        # launcher then saw two "autosave" saves for one game. A state has no slot and
+        # is identified by its file name, one row per state file.
+        where = [
+            GameAsset.user_id == user_id,
+            GameAsset.catalog_game_id == catalog_game_id,
+            GameAsset.kind == kind,
+            GameAsset.emulator == emulator,
+        ]
+        if slot is None:
+            where.append(GameAsset.file_name == file_name)
+            where.append(GameAsset.slot.is_(None))
+        else:
+            where.append(GameAsset.slot == slot)
         asset = session.scalar(
-            select(GameAsset).where(
-                GameAsset.user_id == user_id,
-                GameAsset.catalog_game_id == catalog_game_id,
-                GameAsset.kind == kind,
-                GameAsset.emulator == emulator,
-                GameAsset.file_name == file_name,
-                GameAsset.slot.is_(None) if slot is None else GameAsset.slot == slot,
-            )
+            select(GameAsset).where(*where).order_by(GameAsset.updated_at.desc())
         )
+        if asset is not None:
+            asset.file_name = file_name
         if asset is None:
             asset = GameAsset(
                 user_id=user_id,
