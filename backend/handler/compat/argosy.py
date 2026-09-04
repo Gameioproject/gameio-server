@@ -33,6 +33,16 @@ def platform_slug(platform_id: int) -> str | None:
     return SLUG_BY_PLATFORM_ID.get(platform_id)
 
 
+def utc_iso(value: datetime | None) -> str | None:
+    """A timestamp the way RomM sends one: UTC with a Z, so a client parsing it
+    as an instant does not fall back to "now". Column values are naive UTC."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
 def rom_id(game_id: int, slug: str) -> int | None:
     pid = platform_id(slug)
     return game_id * ROM_ID_BASE + pid if pid is not None else None
@@ -158,6 +168,6 @@ def legacy_rom(
             "now_playing": False,
             "hidden": False,
             "is_favorite": is_favorite,
-            "last_played": last_played.isoformat() if last_played else None,
+            "last_played": utc_iso(last_played),
         },
     }
