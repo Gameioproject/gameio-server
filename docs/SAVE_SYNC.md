@@ -107,7 +107,9 @@ offered as downloads. Response:
 - `POST /states?rom_id&emulator&channel&slot&base_hash&overwrite&device_id`
 - `PUT /saves/{id}` and `PUT /states/{id}` with `base_hash&overwrite&device_id`
 
-Multipart `saveFile` / `stateFile` plus optional `screenshotFile`. An upload replaces
+Multipart `saveFile` / `stateFile` plus optional `screenshotFile`. A part sent with media
+type `application/gzip` is decompressed on arrival; the stored bytes and `content_hash` are
+always the raw asset. An upload replaces
 the unit's row. If `base_hash` is given and the row's current hash differs and
 `overwrite` is false, the server answers **409** with
 `{"detail": {"error": "stale_base", "asset": {...}}}` so the client can reconcile
@@ -119,7 +121,8 @@ shape plus `kind`, `game_id`, `channel`, `state_slot`, `content_hash`,
 
 `GET /saves`, `GET /states` (`rom_id` or `platform_id` filters), `GET /{kind}/{id}`,
 `GET /{kind}/{id}/content`, `POST /{kind}/delete` are unchanged in shape and gain the
-fields above. Timestamps are UTC with a `Z`.
+fields above. Timestamps are UTC with a `Z`. `/content` answers `Content-Encoding: gzip`
+to a client that accepts it; a 16.8 MB N64 state travels as roughly 0.5 MB either way.
 
 ## Client contract
 
