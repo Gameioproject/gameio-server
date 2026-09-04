@@ -10,7 +10,13 @@ from sqlalchemy.orm import Session
 from decorators.database import begin_session
 from models.base import utc_now
 from models.catalog import CatalogGame
-from models.game_activity import GameAsset, GameAssetKind, GamePlaySession
+from models.game_activity import (
+    DEFAULT_CHANNEL,
+    GameAsset,
+    GameAssetKind,
+    GamePlaySession,
+    asset_unit_key,
+)
 
 from .base_handler import DBBaseHandler
 
@@ -163,6 +169,42 @@ class DBGameActivityHandler(DBBaseHandler):
         )
 
     @begin_session
+    def get_unit(
+        self,
+        *,
+        user_id: int,
+        catalog_game_id: int,
+        unit_key: str,
+        session: Session = None,  # type: ignore
+    ) -> GameAsset | None:
+        return session.scalar(
+            select(GameAsset).where(
+                GameAsset.user_id == user_id,
+                GameAsset.catalog_game_id == catalog_game_id,
+                GameAsset.unit_key == unit_key,
+            )
+        )
+
+    @begin_session
+    def list_assets_for_games(
+        self,
+        *,
+        user_id: int,
+        catalog_game_ids: Sequence[int],
+        session: Session = None,  # type: ignore
+    ) -> list[GameAsset]:
+        if not catalog_game_ids:
+            return []
+        return list(
+            session.scalars(
+                select(GameAsset).where(
+                    GameAsset.user_id == user_id,
+                    GameAsset.catalog_game_id.in_(catalog_game_ids),
+                )
+            )
+        )
+
+    @begin_session
     def upsert_asset(
         self,
         *,
@@ -173,45 +215,43 @@ class DBGameActivityHandler(DBBaseHandler):
         file_name: str,
         content: bytes,
         screenshot: bytes | None,
-        slot: str | None = None,
+        channel: str = DEFAULT_CHANNEL,
+        slot_number: int = 0,
+        device_id: str | None = None,
         session: Session = None,  # type: ignore
     ) -> GameAsset:
-        # A save's identity is its slot: the launcher uploads one file per channel and
-        # names it from whatever its emulator wrote, so the name may change between
-        # uploads of the same slot. Matching on it grew a second row per slot, and the
-        # launcher then saw two "autosave" saves for one game. A state has no slot and
-        # is identified by its file name, one row per state file.
-        where = [
-            GameAsset.user_id == user_id,
-            GameAsset.catalog_game_id == catalog_game_id,
-            GameAsset.kind == kind,
-            GameAsset.emulator == emulator,
-        ]
-        if slot is None:
-            where.append(GameAsset.file_name == file_name)
-            where.append(GameAsset.slot.is_(None))
-        else:
-            where.append(GameAsset.slot == slot)
+        """Store the unit's current version, replacing whatever the unit held.
+
+        The unit is the identity (docs/SAVE_SYNC.md); the file name follows the
+        latest upload. Staleness against a base hash is the endpoint's business.
+        """
+        key = asset_unit_key(kind, emulator, channel, slot_number)
         asset = session.scalar(
-            select(GameAsset).where(*where).order_by(GameAsset.updated_at.desc())
+            select(GameAsset).where(
+                GameAsset.user_id == user_id,
+                GameAsset.catalog_game_id == catalog_game_id,
+                GameAsset.unit_key == key,
+            )
         )
-        if asset is not None:
-            asset.file_name = file_name
         if asset is None:
             asset = GameAsset(
                 user_id=user_id,
                 catalog_game_id=catalog_game_id,
                 kind=kind,
                 emulator=emulator,
-                file_name=file_name,
-                slot=slot,
+                unit_key=key,
             )
             session.add(asset)
+        asset.channel = channel
+        asset.slot_number = slot_number if kind == GameAssetKind.STATE else 0
+        asset.slot = channel if kind == GameAssetKind.SAVE else None
+        asset.file_name = file_name
         asset.content_hash = hashlib.sha256(content).hexdigest()
         asset.content = content
         asset.size = len(content)
         if screenshot is not None:
             asset.screenshot = screenshot
+        asset.updated_by_device_id = device_id
         asset.updated_at = utc_now()
         session.flush()
         session.refresh(asset)

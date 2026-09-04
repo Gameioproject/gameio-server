@@ -18,11 +18,15 @@ from handler.compat.argosy import platform_slug, rom_id, split_rom_id, utc_iso
 from handler.database import db_catalog_handler, db_game_activity_handler
 from models.game_activity import (
     ASSET_FILE_NAME_MAX_LENGTH,
+    CHANNEL_MAX_LENGTH,
+    DEFAULT_CHANNEL,
+    DEVICE_ID_MAX_LENGTH,
     EMULATOR_MAX_LENGTH,
     GameAsset,
     GameAssetKind,
+    asset_unit_key,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from utils.router import APIRouter
 
 router = APIRouter(tags=["compat saves"])
@@ -76,8 +80,13 @@ def _serialize(asset: GameAsset, rom: int | None = None) -> dict[str, Any]:
     return {
         "id": asset.id,
         "rom_id": rid,
+        "game_id": asset.catalog_game_id,
+        "kind": asset.kind.value,
         "user_id": asset.user_id,
         "emulator": asset.emulator or None,
+        "channel": asset.channel,
+        "state_slot": asset.slot_number if asset.kind == GameAssetKind.STATE else None,
+        "updated_by_device_id": asset.updated_by_device_id,
         "file_name": asset.file_name,
         "file_size_bytes": asset.size,
         "download_path": f"/api/saves/{asset.id}/content"
@@ -111,16 +120,31 @@ def _list(request: Request, kind: GameAssetKind, rom: int | None, platform: int 
     return out
 
 
-async def _upload(
-    request: Request,
-    kind: GameAssetKind,
-    rom: int,
-    emulator: str | None,
-    slot: str | None,
-    file: UploadFile,
-    screenshot: UploadFile | None,
-) -> dict[str, Any]:
-    game_id, _ = _game_for_rom(rom)
+def _clean_channel(channel: str | None) -> str:
+    value = (channel or "").strip()
+    return value[:CHANNEL_MAX_LENGTH] if value else DEFAULT_CHANNEL
+
+
+def _refuse_if_stale(
+    existing: GameAsset | None,
+    base_hash: str | None,
+    overwrite: bool,
+    rom: int | None,
+) -> None:
+    """The reconcile rule's write half: a client that names the version it built on
+    may not replace a unit that has moved past it unless it says so."""
+    if existing is None or overwrite or base_hash is None:
+        return
+    if existing.content_hash and existing.content_hash != base_hash:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": "stale_base", "asset": _serialize(existing, rom=rom)},
+        )
+
+
+async def _read_parts(
+    file: UploadFile, screenshot: UploadFile | None
+) -> tuple[bytes, bytes | None]:
     content = await file.read(MAX_ASSET_BYTES + 1)
     if len(content) > MAX_ASSET_BYTES:
         raise HTTPException(
@@ -128,15 +152,43 @@ async def _upload(
             detail="Asset is too large",
         )
     shot = await screenshot.read() if screenshot is not None else None
+    return content, shot
+
+
+async def _upload(
+    request: Request,
+    kind: GameAssetKind,
+    rom: int,
+    emulator: str | None,
+    channel: str | None,
+    slot_number: int,
+    file: UploadFile,
+    screenshot: UploadFile | None,
+    base_hash: str | None = None,
+    overwrite: bool = False,
+    device_id: str | None = None,
+) -> dict[str, Any]:
+    game_id, _ = _game_for_rom(rom)
+    emulator_label = (emulator or "")[:EMULATOR_MAX_LENGTH]
+    channel_name = _clean_channel(channel)
+    existing = db_game_activity_handler.get_unit(
+        user_id=request.user.id,
+        catalog_game_id=game_id,
+        unit_key=asset_unit_key(kind, emulator_label, channel_name, slot_number),
+    )
+    _refuse_if_stale(existing, base_hash, overwrite, rom)
+    content, shot = await _read_parts(file, screenshot)
     asset = db_game_activity_handler.upsert_asset(
         user_id=request.user.id,
         catalog_game_id=game_id,
         kind=kind,
-        emulator=(emulator or "")[:EMULATOR_MAX_LENGTH],
+        emulator=emulator_label,
+        channel=channel_name,
+        slot_number=slot_number,
         file_name=(file.filename or kind.value)[:ASSET_FILE_NAME_MAX_LENGTH],
         content=content,
         screenshot=shot,
-        slot=slot,
+        device_id=(device_id or None) and device_id[:DEVICE_ID_MAX_LENGTH],
     )
     return _serialize(asset, rom=rom)
 
@@ -145,27 +197,26 @@ async def _replace(
     request: Request,
     kind: GameAssetKind,
     asset_id: int,
-    slot: str | None,
     file: UploadFile,
     screenshot: UploadFile | None,
+    base_hash: str | None = None,
+    overwrite: bool = False,
+    device_id: str | None = None,
 ) -> dict[str, Any]:
     asset = _own_asset(request, asset_id, kind)
-    content = await file.read(MAX_ASSET_BYTES + 1)
-    if len(content) > MAX_ASSET_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Asset is too large",
-        )
-    shot = await screenshot.read() if screenshot is not None else None
+    _refuse_if_stale(asset, base_hash, overwrite, rom=None)
+    content, shot = await _read_parts(file, screenshot)
     updated = db_game_activity_handler.upsert_asset(
         user_id=request.user.id,
         catalog_game_id=asset.catalog_game_id,
         kind=kind,
         emulator=asset.emulator,
-        file_name=asset.file_name,
+        channel=asset.channel,
+        slot_number=asset.slot_number,
+        file_name=(file.filename or asset.file_name)[:ASSET_FILE_NAME_MAX_LENGTH],
         content=content,
         screenshot=shot if shot is not None else asset.screenshot,
-        slot=slot if slot is not None else asset.slot,
+        device_id=(device_id or None) and device_id[:DEVICE_ID_MAX_LENGTH],
     )
     return _serialize(updated)
 
@@ -206,14 +257,20 @@ async def upload_save(
     request: Request,
     rom_id: Annotated[int, Query()],
     emulator: Annotated[str | None, Query()] = None,
+    channel: Annotated[str | None, Query()] = None,
+    # Classic clients name the channel "slot"; the two are the same thing here.
     slot: Annotated[str | None, Query()] = None,
+    base_hash: Annotated[str | None, Query()] = None,
+    overwrite: Annotated[bool, Query()] = False,
+    device_id: Annotated[str | None, Query()] = None,
     autocleanup: Annotated[bool, Query()] = False,
     autocleanup_limit: Annotated[int | None, Query()] = None,
     saveFile: UploadFile = SAVE_FILE,
     screenshotFile: UploadFile | None = SHOT_FILE,
 ) -> dict[str, Any]:
     return await _upload(
-        request, GameAssetKind.SAVE, rom_id, emulator, slot, saveFile, screenshotFile
+        request, GameAssetKind.SAVE, rom_id, emulator, channel or slot, 0,
+        saveFile, screenshotFile, base_hash, overwrite, device_id,
     )
 
 
@@ -222,11 +279,15 @@ async def update_save(
     request: Request,
     save_id: int,
     slot: Annotated[str | None, Query()] = None,
+    base_hash: Annotated[str | None, Query()] = None,
+    overwrite: Annotated[bool, Query()] = False,
+    device_id: Annotated[str | None, Query()] = None,
     saveFile: UploadFile = SAVE_FILE,
     screenshotFile: UploadFile | None = SHOT_FILE,
 ) -> dict[str, Any]:
     return await _replace(
-        request, GameAssetKind.SAVE, save_id, slot, saveFile, screenshotFile
+        request, GameAssetKind.SAVE, save_id, saveFile, screenshotFile,
+        base_hash, overwrite, device_id,
     )
 
 
@@ -259,11 +320,17 @@ async def upload_state(
     request: Request,
     rom_id: Annotated[int, Query()],
     emulator: Annotated[str | None, Query()] = None,
+    channel: Annotated[str | None, Query()] = None,
+    slot: Annotated[int, Query()] = 0,
+    base_hash: Annotated[str | None, Query()] = None,
+    overwrite: Annotated[bool, Query()] = False,
+    device_id: Annotated[str | None, Query()] = None,
     stateFile: UploadFile = STATE_FILE,
     screenshotFile: UploadFile | None = SHOT_FILE,
 ) -> dict[str, Any]:
     return await _upload(
-        request, GameAssetKind.STATE, rom_id, emulator, None, stateFile, screenshotFile
+        request, GameAssetKind.STATE, rom_id, emulator, channel, slot,
+        stateFile, screenshotFile, base_hash, overwrite, device_id,
     )
 
 
@@ -271,11 +338,15 @@ async def upload_state(
 async def update_state(
     request: Request,
     state_id: int,
+    base_hash: Annotated[str | None, Query()] = None,
+    overwrite: Annotated[bool, Query()] = False,
+    device_id: Annotated[str | None, Query()] = None,
     stateFile: UploadFile = STATE_FILE,
     screenshotFile: UploadFile | None = SHOT_FILE,
 ) -> dict[str, Any]:
     return await _replace(
-        request, GameAssetKind.STATE, state_id, None, stateFile, screenshotFile
+        request, GameAssetKind.STATE, state_id, stateFile, screenshotFile,
+        base_hash, overwrite, device_id,
     )
 
 
@@ -287,3 +358,121 @@ def delete_states(request: Request, payload: DeleteIdsPayload) -> list[int]:
 @protected_route(router.get, "/states/{state_id}/content", [Scope.ASSETS_READ])
 def state_content(request: Request, state_id: int) -> Response:
     return _content(request, state_id, GameAssetKind.STATE)
+
+
+# --- Reconcile -----------------------------------------------------------------
+
+
+class ReconcileItem(BaseModel):
+    rom_id: int
+    kind: GameAssetKind
+    emulator: str = Field(default="", max_length=EMULATOR_MAX_LENGTH)
+    channel: str = Field(default=DEFAULT_CHANNEL, max_length=CHANNEL_MAX_LENGTH)
+    slot: int = 0
+    has_local: bool = True
+    local_hash: str | None = None
+    base_hash: str | None = None
+    local_changed: bool = False
+
+
+class ReconcilePayload(BaseModel):
+    device_id: str | None = Field(default=None, max_length=DEVICE_ID_MAX_LENGTH)
+    present_roms: list[int] = Field(default_factory=list)
+    items: list[ReconcileItem] = Field(default_factory=list)
+
+
+def _decide(item: ReconcileItem, server: GameAsset | None) -> tuple[str, str]:
+    """The reconcile rule from docs/SAVE_SYNC.md; hashes only, never clocks."""
+    if server is None:
+        return ("upload", "not on server") if item.has_local else ("no_op", "nothing anywhere")
+    if not item.has_local:
+        return "download", "server only"
+    if item.local_hash and item.local_hash == server.content_hash:
+        return "no_op", "identical"
+    if item.base_hash is None:
+        return "conflict", "never synced, both sides have a version"
+    if item.base_hash == server.content_hash:
+        if item.local_changed:
+            return "upload", "local changed, server unchanged"
+        return "no_op", "unchanged since last sync"
+    if item.local_changed:
+        return "conflict", "both changed since last sync"
+    return "download", "server changed, local unchanged"
+
+
+def _operation(
+    action: str,
+    reason: str,
+    rom: int,
+    kind: GameAssetKind,
+    emulator: str,
+    channel: str,
+    slot: int,
+    server: GameAsset | None,
+) -> dict[str, Any]:
+    return {
+        "action": action,
+        "reason": reason,
+        "rom_id": rom,
+        "kind": kind.value,
+        "emulator": emulator or None,
+        "channel": channel,
+        "slot": slot if kind == GameAssetKind.STATE else 0,
+        "asset_id": server.id if server else None,
+        "file_name": server.file_name if server else None,
+        "server_hash": server.content_hash if server else None,
+        "server_updated_at": utc_iso(server.updated_at) if server else None,
+        "server_size": server.size if server else None,
+    }
+
+
+@protected_route(router.post, "/sync/reconcile", [Scope.ASSETS_READ])
+def reconcile(request: Request, payload: ReconcilePayload) -> dict[str, Any]:
+    """Plan the client's uploads and downloads for saves and states in one pass."""
+    rom_by_game: dict[int, int] = {}
+    for present in payload.present_roms:
+        game_id, slug = split_rom_id(present)
+        if slug is not None:
+            rom_by_game.setdefault(game_id, present)
+    for item in payload.items:
+        game_id, slug = split_rom_id(item.rom_id)
+        if slug is not None:
+            rom_by_game.setdefault(game_id, item.rom_id)
+
+    assets = db_game_activity_handler.list_assets_for_games(
+        user_id=request.user.id, catalog_game_ids=list(rom_by_game)
+    )
+    by_unit: dict[tuple[int, str], GameAsset] = {
+        (a.catalog_game_id, a.unit_key): a for a in assets
+    }
+
+    operations: list[dict[str, Any]] = []
+    mentioned: set[tuple[int, str]] = set()
+    for item in payload.items:
+        game_id, slug = split_rom_id(item.rom_id)
+        if slug is None:
+            continue
+        channel = _clean_channel(item.channel)
+        slot = item.slot if item.kind == GameAssetKind.STATE else 0
+        key = asset_unit_key(item.kind, item.emulator, channel, slot)
+        mentioned.add((game_id, key))
+        server = by_unit.get((game_id, key))
+        action, reason = _decide(item, server)
+        operations.append(
+            _operation(action, reason, item.rom_id, item.kind, item.emulator, channel, slot, server)
+        )
+
+    for (game_id, key), server in by_unit.items():
+        if (game_id, key) in mentioned:
+            continue
+        rom_id = rom_by_game.get(game_id)
+        if rom_id is None:
+            continue
+        operations.append(
+            _operation(
+                "download", "server only", rom_id, server.kind, server.emulator,
+                server.channel, server.slot_number, server,
+            )
+        )
+
+    return {"operations": operations}
