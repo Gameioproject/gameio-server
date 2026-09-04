@@ -14,7 +14,7 @@ from fastapi.responses import Response
 
 from decorators.auth import protected_route
 from handler.auth.constants import Scope
-from handler.compat.argosy import platform_slug, rom_id, split_rom_id
+from handler.compat.argosy import platform_slug, rom_id, split_rom_id, utc_iso
 from handler.database import db_catalog_handler, db_game_activity_handler
 from models.game_activity import (
     ASSET_FILE_NAME_MAX_LENGTH,
@@ -83,8 +83,8 @@ def _serialize(asset: GameAsset, rom: int | None = None) -> dict[str, Any]:
         "download_path": f"/api/saves/{asset.id}/content"
         if asset.kind == GameAssetKind.SAVE
         else f"/api/states/{asset.id}/content",
-        "updated_at": asset.updated_at.isoformat(),
-        "created_at": asset.created_at.isoformat(),
+        "updated_at": utc_iso(asset.updated_at),
+        "created_at": utc_iso(asset.created_at),
         "slot": asset.slot,
         "content_hash": asset.content_hash,
         "screenshot": shot,
