@@ -7,6 +7,8 @@ games, uploads upsert assets, listings serialize assets back into the
 classic wire shape the client's models expect.
 """
 
+import gzip
+import zlib
 from typing import Annotated, Any
 
 from fastapi import File, HTTPException, Query, Request, UploadFile, status
@@ -142,15 +144,33 @@ def _refuse_if_stale(
         )
 
 
+GZIP_MEDIA_TYPES = frozenset({"application/gzip", "application/x-gzip"})
+
+
+def _too_large() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        detail="Asset is too large",
+    )
+
+
 async def _read_parts(
     file: UploadFile, screenshot: UploadFile | None
 ) -> tuple[bytes, bytes | None]:
+    """Read the asset bytes; a part sent as gzip is stored and hashed decompressed."""
     content = await file.read(MAX_ASSET_BYTES + 1)
     if len(content) > MAX_ASSET_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="Asset is too large",
-        )
+        raise _too_large()
+    if (file.content_type or "") in GZIP_MEDIA_TYPES:
+        try:
+            content = zlib.decompressobj(wbits=31).decompress(content, MAX_ASSET_BYTES + 1)
+        except zlib.error as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Asset is not valid gzip",
+            ) from exc
+        if len(content) > MAX_ASSET_BYTES:
+            raise _too_large()
     shot = await screenshot.read() if screenshot is not None else None
     return content, shot
 
@@ -222,12 +242,19 @@ async def _replace(
 
 
 def _content(request: Request, asset_id: int, kind: GameAssetKind) -> Response:
+    """Serve the bytes, gzip-encoded when the client accepts it: emulator states are mostly
+    zeros and shrink to a few percent, which is the difference between seconds and minutes
+    on a home uplink."""
     asset = _own_asset(request, asset_id, kind)
-    return Response(
-        content=asset.content,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f'attachment; filename="{asset.file_name}"'},
-    )
+    headers = {
+        "Content-Disposition": f'attachment; filename="{asset.file_name}"',
+        "Vary": "Accept-Encoding",
+    }
+    body = asset.content
+    if "gzip" in request.headers.get("accept-encoding", ""):
+        body = gzip.compress(body, compresslevel=1)
+        headers["Content-Encoding"] = "gzip"
+    return Response(content=body, media_type="application/octet-stream", headers=headers)
 
 
 def _delete_many(request: Request, ids: list[int]) -> list[int]:
