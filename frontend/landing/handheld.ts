@@ -66,7 +66,7 @@ export function mountHandheld(root: HTMLElement, onConfirm: () => void): void {
         break;
       case "a":
       case "start":
-        flash(input === "a" ? ".btn.a" : ".pill[data-btn='start']");
+        flash(input === "a" ? ".btn.a" : ".tiny[data-btn='start']");
         onConfirm();
         break;
       case "b":
@@ -76,7 +76,7 @@ export function mountHandheld(root: HTMLElement, onConfirm: () => void): void {
       case "x":
       case "y":
       case "select":
-        flash(input === "select" ? ".pill[data-btn='select']" : `.btn.${input}`);
+        flash(input === "select" ? ".tiny[data-btn='select']" : `.btn.${input}`);
         break;
     }
   }
