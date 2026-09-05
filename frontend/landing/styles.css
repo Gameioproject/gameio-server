@@ -118,103 +118,107 @@ code { font-family: var(--mono); font-size: 0.9em; background: var(--surface-2);
 
 /* ---------- the handheld, after an Odin-class device ---------- */
 .device {
-  position: relative; width: 100%; max-width: 860px; justify-self: end;
-  display: grid; grid-template-columns: 86px minmax(0, 1fr) 86px; align-items: center; column-gap: 10px;
-  background: linear-gradient(180deg, #1A1C20 0%, #0E0F12 62%, #131418 100%);
-  border-radius: 28px / 32px; padding: 14px 12px 18px;
+  position: relative; width: 100%; max-width: 880px; justify-self: end;
+  display: grid; grid-template-columns: 74px minmax(0, 1fr) 74px; align-items: center; column-gap: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 14%),
+    linear-gradient(180deg, #24262A 0%, #131417 46%, #0C0D0F 100%);
+  border-radius: 22px / 26px; padding: 11px 10px 20px;
   box-shadow:
-    0 50px 90px -40px rgba(0, 0, 0, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 46px 80px -38px rgba(0, 0, 0, 0.92),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
+/* Rounded capsule ends: the part your hands actually hold. */
 .grip {
-  position: absolute; top: 6px; bottom: -22px; width: 116px; z-index: -1;
-  border-radius: 44px 44px 60px 60px;
-  background: linear-gradient(180deg, #191B1F 0%, #0B0C0E 100%);
-  box-shadow: 0 40px 60px -34px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: absolute; top: -4px; bottom: -14px; width: 128px; z-index: -1;
+  border-radius: 68px;
+  background: linear-gradient(180deg, #26282C 0%, #141518 52%, #0A0B0C 100%);
+  box-shadow: 0 40px 60px -34px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
-.grip.l { left: -22px; } .grip.r { right: -22px; }
+.grip.l { left: -30px; } .grip.r { right: -30px; }
 .trigger {
-  position: absolute; top: -18px; width: 150px; height: 26px; z-index: -1;
-  border-radius: 14px 14px 4px 4px;
-  background: linear-gradient(180deg, #26282C 0%, #131418 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  position: absolute; top: -13px; width: 168px; height: 20px; z-index: -2;
+  border-radius: 12px 12px 3px 3px;
+  background: linear-gradient(180deg, #2A2C31 0%, #141518 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 .trigger::after {
-  content: ""; position: absolute; left: 14px; right: 14px; top: -8px; height: 16px; border-radius: 10px 10px 0 0;
-  background: linear-gradient(180deg, #1E2024, #15161A); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  content: ""; position: absolute; left: 18px; right: 18px; top: -7px; height: 14px; border-radius: 9px 9px 0 0;
+  background: linear-gradient(180deg, #202226, #16171A); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
-.trigger.l { left: 26px; } .trigger.r { right: 26px; }
+.trigger.l { left: 30px; } .trigger.r { right: 30px; }
 
-.side { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.side { display: flex; flex-direction: column; align-items: center; gap: 11px; }
+/* Amber Hall-effect sticks: the one hit of colour on the hardware. */
 .stick {
-  position: relative; width: 58px; height: 58px; border-radius: 50%;
-  background: radial-gradient(circle, #08090A 0 42%, #1B1D21 43% 100%);
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.9), 0 0 0 1.5px rgba(255, 90, 52, 0.55), 0 0 14px rgba(255, 90, 52, 0.30);
+  position: relative; width: 46px; height: 46px; border-radius: 50%;
+  background: radial-gradient(circle, #0B0C0D 0 40%, #191A1D 41% 100%);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 .stick i {
-  position: absolute; inset: 8px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 38%, #33363B 0 28%, #17191C 29% 100%);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  position: absolute; inset: 5px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 34%, #FF8A45 0 42%, #F0611F 43% 78%, #C4430F 79% 100%);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.8), 0 0 14px rgba(255, 90, 52, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 .stick i::after {
-  content: ""; position: absolute; inset: 6px; border-radius: 50%;
-  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.06), transparent 60%);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55);
+  content: ""; position: absolute; inset: 8px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0.14));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-.dpad { position: relative; width: 70px; height: 70px; }
+.dpad { position: relative; width: 50px; height: 50px; }
 .dpad::before, .dpad::after {
-  content: ""; position: absolute; border-radius: 7px;
-  background: linear-gradient(180deg, #2A2D32, #16181B);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  content: ""; position: absolute; border-radius: 6px;
+  background: linear-gradient(180deg, #2B2E33, #15171A);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
-.dpad::before { left: 24px; top: 0; width: 22px; height: 70px; }
-.dpad::after { left: 0; top: 24px; width: 70px; height: 22px; }
+.dpad::before { left: 17px; top: 0; width: 16px; height: 50px; }
+.dpad::after { left: 0; top: 17px; width: 50px; height: 16px; }
 .arm {
-  position: absolute; width: 24px; height: 24px; border: 0; background: transparent; cursor: pointer;
-  z-index: 1; border-radius: 5px; transition: transform 80ms var(--ease), background 80ms var(--ease);
+  position: absolute; width: 17px; height: 17px; border: 0; background: transparent; cursor: pointer;
+  z-index: 1; border-radius: 4px; transition: transform 80ms var(--ease), background 80ms var(--ease);
 }
-.arm::after { content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; border: 3.5px solid transparent; transform: translate(-50%, -50%); }
-.arm.up { left: 23px; top: 0; } .arm.up::after { border-bottom-color: #6E7480; transform: translate(-50%, -78%); }
-.arm.down { left: 23px; bottom: 0; } .arm.down::after { border-top-color: #6E7480; transform: translate(-50%, -22%); }
-.arm.left { left: 0; top: 23px; } .arm.left::after { border-right-color: #6E7480; transform: translate(-78%, -50%); }
-.arm.right { right: 0; top: 23px; } .arm.right::after { border-left-color: #6E7480; transform: translate(-22%, -50%); }
-.arm.pressed, .arm:active { transform: translateY(2px); background: rgba(0, 0, 0, 0.4); }
-.hub { position: absolute; left: 24px; top: 24px; width: 22px; height: 22px; z-index: 1; }
-.hub::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #2C2F34, #0C0D0F); }
+.arm::after { content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; border: 3px solid transparent; transform: translate(-50%, -50%); }
+.arm.up { left: 16.5px; top: 0; } .arm.up::after { border-bottom-color: #767C88; transform: translate(-50%, -80%); }
+.arm.down { left: 16.5px; bottom: 0; } .arm.down::after { border-top-color: #767C88; transform: translate(-50%, -20%); }
+.arm.left { left: 0; top: 16.5px; } .arm.left::after { border-right-color: #767C88; transform: translate(-80%, -50%); }
+.arm.right { right: 0; top: 16.5px; } .arm.right::after { border-left-color: #767C88; transform: translate(-20%, -50%); }
+.arm.pressed, .arm:active { transform: translateY(2px); background: rgba(0, 0, 0, 0.45); }
+.hub { position: absolute; left: 17px; top: 17px; width: 16px; height: 16px; z-index: 1; }
+.hub::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #2D3036, #0C0D0F); }
 
-.face { position: relative; width: 74px; height: 74px; }
+.face { position: relative; width: 62px; height: 62px; }
 .btn {
-  position: absolute; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer;
-  font-family: var(--mono); font-weight: 500; font-size: 9.5px;
+  position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 0; cursor: pointer;
+  font-family: var(--mono); font-weight: 500; font-size: 8px;
   display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(circle at 50% 34%, #2E3136, #131417); color: var(--ink-2);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  background: radial-gradient(circle at 50% 32%, #33363C, #131417); color: var(--ink-3);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.24);
   transition: transform 80ms var(--ease), box-shadow 80ms var(--ease);
 }
-.btn.x { left: 24px; top: 0; } .btn.y { left: 0; top: 24px; } .btn.b { left: 24px; bottom: 0; }
-.btn.a { right: 0; top: 24px; color: #FFD9CE; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0 0 1.5px rgba(255, 90, 52, 0.75); }
+.btn.x { left: 20px; top: 0; } .btn.y { left: 0; top: 20px; } .btn.b { left: 20px; bottom: 0; }
+.btn.a { right: 0; top: 20px; color: #FFD3C4; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 0 0 1.5px rgba(255, 90, 52, 0.8); }
 .btn.pressed, .btn:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18); }
 
 .grille {
-  width: 34px; height: 14px; margin-top: 2px;
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.13) 1px, transparent 1.4px);
+  width: 30px; height: 12px; margin-top: 1px;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.13) 1px, transparent 1.35px);
   background-size: 6px 6px;
 }
-.center-keys { grid-column: 2; display: flex; justify-content: center; gap: 220px; margin-top: 10px; }
+.center-keys { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%); display: flex; gap: 250px; }
 .tiny {
-  width: 26px; height: 9px; border: 0; border-radius: 6px; cursor: pointer; padding: 0;
-  background: linear-gradient(180deg, #26282C, #131417);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  width: 22px; height: 7px; border: 0; border-radius: 5px; cursor: pointer; padding: 0;
+  background: linear-gradient(180deg, #2A2C31, #141518);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   transition: transform 80ms var(--ease);
 }
 .tiny.pressed, .tiny:active { transform: translateY(2px); }
 
 .screen-well { min-width: 0; }
 .screen {
-  position: relative; aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden;
-  background: var(--screen); border: 4px solid #050506;
+  position: relative; aspect-ratio: 16 / 9; border-radius: 13px; overflow: hidden;
+  background: var(--screen); border: 3px solid #050506;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 14px 40px -14px rgba(0, 0, 0, 0.9);
 }
 .screen::after {
@@ -343,7 +347,7 @@ a.hint-item:hover { color: var(--ink); }
   .steps li { border-top-width: 2px; }
   .specs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .specs > div:nth-child(3) { padding-left: 0; border-left: 0; }
-  .center-keys { gap: 120px; }
+  .center-keys { gap: 150px; }
 }
 @media (max-width: 640px) {
   body { font-size: 16px; }
@@ -351,19 +355,19 @@ a.hint-item:hover { color: var(--ink); }
   .topbar, .hintbar { padding: 0 20px; }
   .hintbar { gap: 16px; font-size: 12.5px; }
   .quiet { display: none; }
-  .device { grid-template-columns: 58px minmax(0, 1fr) 58px; column-gap: 8px; padding: 10px 8px 14px; border-radius: 18px / 22px; }
-  .grip { width: 66px; left: -12px; } .grip.r { left: auto; right: -12px; }
-  .trigger { width: 84px; height: 18px; top: -12px; } .trigger.l { left: 14px; } .trigger.r { right: 14px; }
-  .side { gap: 9px; }
-  .stick { width: 38px; height: 38px; } .stick i { inset: 6px; } .stick i::after { inset: 4px; }
-  .dpad { width: 42px; height: 42px; }
-  .dpad::before { left: 14px; width: 14px; height: 42px; } .dpad::after { top: 14px; width: 42px; height: 14px; }
-  .arm { width: 14px; height: 14px; } .arm.up, .arm.down { left: 14px; } .arm.left, .arm.right { top: 14px; }
-  .hub { left: 14px; top: 14px; width: 14px; height: 14px; } .hub::after { inset: 4px; }
-  .face { width: 50px; height: 50px; }
-  .btn { width: 18px; height: 18px; font-size: 7.5px; } .btn.x, .btn.b { left: 16px; } .btn.y, .btn.a { top: 16px; }
+  .device { grid-template-columns: 50px minmax(0, 1fr) 50px; column-gap: 7px; padding: 8px 7px 15px; border-radius: 16px / 18px; }
+  .grip { width: 74px; left: -16px; } .grip.r { left: auto; right: -16px; }
+  .trigger { width: 96px; height: 15px; top: -9px; } .trigger.l { left: 18px; } .trigger.r { right: 18px; }
+  .side { gap: 7px; }
+  .stick { width: 32px; height: 32px; } .stick i { inset: 4px; } .stick i::after { inset: 5px; }
+  .dpad { width: 36px; height: 36px; }
+  .dpad::before { left: 12px; width: 12px; height: 36px; } .dpad::after { top: 12px; width: 36px; height: 12px; }
+  .arm { width: 12px; height: 12px; } .arm.up, .arm.down { left: 12px; } .arm.left, .arm.right { top: 12px; }
+  .hub { left: 12px; top: 12px; width: 12px; height: 12px; } .hub::after { inset: 3px; }
+  .face { width: 44px; height: 44px; }
+  .btn { width: 16px; height: 16px; font-size: 6.5px; } .btn.x, .btn.b { left: 14px; } .btn.y, .btn.a { top: 14px; }
   .grille { width: 26px; height: 12px; background-size: 6px 6px; }
-  .center-keys { gap: 70px; margin-top: 4px; } .tiny { width: 18px; height: 7px; }
+  .center-keys { gap: 90px; bottom: 5px; } .tiny { width: 16px; height: 6px; }
   .slide.pad { padding: 14px 16px 30px; } .slide .lcd { font-size: 14px; } .slide p { font-size: 11.5px; }
   .tile { width: 30px; height: 40px; }
   .toast { display: none; }
