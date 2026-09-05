@@ -57,15 +57,21 @@
     </div>
 
     <div class="device" id="device" role="region" aria-label="Gameio running on a handheld, interactive">
-      <span class="shoulder l" aria-hidden="true">L</span>
-      <span class="shoulder r" aria-hidden="true">R</span>
+      <span class="bumper l" aria-hidden="true">L1</span>
+      <span class="bumper r" aria-hidden="true">R1</span>
+      <span class="grip l" aria-hidden="true"></span>
+      <span class="grip r" aria-hidden="true"></span>
 
-      <div class="dpad" role="group" aria-label="D-pad">
-        <button type="button" class="arm up" data-dir="up" aria-label="Up"></button>
-        <button type="button" class="arm left" data-dir="left" aria-label="Previous screen"></button>
-        <button type="button" class="arm right" data-dir="right" aria-label="Next screen"></button>
-        <button type="button" class="arm down" data-dir="down" aria-label="Down"></button>
-        <span class="hub" aria-hidden="true"></span>
+      <div class="side left">
+        <span class="stick" aria-hidden="true"><i></i></span>
+        <div class="dpad" role="group" aria-label="D-pad">
+          <button type="button" class="arm up" data-dir="up" aria-label="Up"></button>
+          <button type="button" class="arm left" data-dir="left" aria-label="Previous screen"></button>
+          <button type="button" class="arm right" data-dir="right" aria-label="Next screen"></button>
+          <button type="button" class="arm down" data-dir="down" aria-label="Down"></button>
+          <span class="hub" aria-hidden="true"></span>
+        </div>
+        <button type="button" class="tiny" data-btn="select" aria-label="View">&#9633;</button>
       </div>
 
       <div class="screen-well">
@@ -113,18 +119,16 @@
         </div>
       </div>
 
-      <div class="face" role="group" aria-label="Face buttons">
-        <button type="button" class="btn x" data-btn="x" aria-label="X">X</button>
-        <button type="button" class="btn y" data-btn="y" aria-label="Y">Y</button>
-        <button type="button" class="btn a" data-btn="a" aria-label="A, download">A</button>
-        <button type="button" class="btn b" data-btn="b" aria-label="B">B</button>
+      <div class="side right">
+        <div class="face" role="group" aria-label="Face buttons">
+          <button type="button" class="btn x" data-btn="x" aria-label="X">X</button>
+          <button type="button" class="btn y" data-btn="y" aria-label="Y">Y</button>
+          <button type="button" class="btn a" data-btn="a" aria-label="A, download">A</button>
+          <button type="button" class="btn b" data-btn="b" aria-label="B">B</button>
+        </div>
+        <span class="stick" aria-hidden="true"><i></i></span>
+        <button type="button" class="tiny" data-btn="start" aria-label="Menu">&#8801;</button>
       </div>
-
-      <div class="pills">
-        <button type="button" class="pill" data-btn="select">SELECT</button>
-        <button type="button" class="pill" data-btn="start">START</button>
-      </div>
-      <span class="grille" aria-hidden="true"></span>
     </div>
   </header>
 
