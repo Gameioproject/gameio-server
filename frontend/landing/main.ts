@@ -17,3 +17,11 @@ nameLatestBuild(
   [download, document.getElementById("download2") as HTMLAnchorElement | null],
   document.getElementById("build-meta"),
 );
+
+const clock = document.getElementById("clock");
+function tick(): void {
+  if (!clock) return;
+  clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+tick();
+window.setInterval(tick, 15000);
