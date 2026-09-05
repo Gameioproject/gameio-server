@@ -112,6 +112,12 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: "esnext",
+      rollupOptions: {
+        input: {
+          app: fileURLToPath(new URL("./index.html", import.meta.url)),
+          landing: fileURLToPath(new URL("./landing/index.html", import.meta.url)),
+        },
+      },
       // Browser targets for CSS (prefixing + down-leveling) come from the
       // shared `.browserslistrc`. Never hand-write a `-webkit-` twin next to a
       // standard property: Lightning CSS collapses the pair to whichever is
@@ -153,7 +159,7 @@ export default defineConfig(({ mode }) => {
             // nginx serves the landing page at the bare root (location = /) and lets
             // every other path fall through to the web app; mirror that here.
             if (req.url === "/" || req.url.startsWith("/?")) {
-              req.url = "/landing.html" + req.url.slice(1);
+              req.url = "/landing/index.html" + req.url.slice(1);
             }
             // A hand-typed short URL for the handheld: lists the builds newest-first
             // so nobody has to copy a hashed filename. Reads public/apk (where

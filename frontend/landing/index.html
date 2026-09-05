@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gameio</title>
+<meta name="description" content="Your whole library lives on the server. Browse it with a controller, pull down whatever you feel like playing, and your saves come with you.">
+<meta name="theme-color" content="#F0E6D2">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta property="og:title" content="Gameio">
+<meta property="og:description" content="Browse a whole console library with a controller. Download what you feel like playing.">
+<meta property="og:image" content="/brand/app-home.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@600;700;800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Silkscreen&display=swap">
+<script type="module" src="/landing/main.ts"></script>
+</head>
+<body>
+<div class="page">
+
+  <nav class="shell topbar">
+    <a class="brand" href="/">
+      <img src="/brand/gameio_icon.svg" width="34" height="34" alt="">
+      <span>Gameio</span>
+    </a>
+    <div class="topbar-right">
+      <a class="quiet" href="/apk/">All builds</a>
+      <a class="pillbtn" href="#get">Download</a>
+    </div>
+  </nav>
+
+  <header class="shell hero">
+    <div class="hero-copy">
+      <span class="lcd-chip">ANDROID HANDHELDS &middot; SIDELOAD APK</span>
+      <h1>Your whole library, on the handheld.</h1>
+      <p class="sub">
+        Gameio points at a server that holds the catalog. Browse it with a controller,
+        pull down whatever you feel like playing, and <strong>your saves come with you</strong>.
+      </p>
+      <div class="cta-row">
+        <a class="cart-cta" id="download" href="/apk/">
+          <span class="cart-shape">
+            <span class="cart-label">
+              <b>Download</b>
+              <small>Android APK</small>
+            </span>
+            <span class="cart-grooves"><i></i><i></i></span>
+          </span>
+        </a>
+        <span class="cta-meta" id="build-meta">Android 8.0 and up</span>
+      </div>
+      <p class="hint" id="hint">Try the D-pad. Arrow keys and a plugged-in controller work too.</p>
+    </div>
+
+    <div class="device" id="device" role="region" aria-label="Gameio running on a handheld, interactive">
+      <span class="shoulder l" aria-hidden="true">L</span>
+      <span class="shoulder r" aria-hidden="true">R</span>
+
+      <div class="dpad" role="group" aria-label="D-pad">
+        <button type="button" class="arm up" data-dir="up" aria-label="Up"></button>
+        <button type="button" class="arm left" data-dir="left" aria-label="Previous screen"></button>
+        <button type="button" class="arm right" data-dir="right" aria-label="Next screen"></button>
+        <button type="button" class="arm down" data-dir="down" aria-label="Down"></button>
+        <span class="hub" aria-hidden="true"></span>
+      </div>
+
+      <div class="screen-well">
+        <div class="screen" id="screen">
+          <div class="slides" id="slides">
+            <section class="slide is-active" data-slide="home">
+              <img src="/brand/app-home.jpg" width="2000" height="900" alt="The Gameio home screen: a Top rated shelf with Grand Theft Auto V focused, a Gems shelf below, controller hints along the bottom." decoding="async">
+            </section>
+            <section class="slide" data-slide="browse" aria-hidden="true">
+              <div class="slide-head"><span class="lcd">SHELVES, NOT FOLDERS</span></div>
+              <p>Every console the server knows about, as rows you scroll. A game lands on the device only when you ask for it.</p>
+              <div class="shelf" aria-hidden="true">
+                <i class="tile t1"></i><i class="tile t2 focus"></i><i class="tile t3"></i><i class="tile t4"></i><i class="tile t5"></i><i class="tile t6"></i><i class="tile t7"></i>
+              </div>
+            </section>
+            <section class="slide" data-slide="controller" aria-hidden="true">
+              <div class="slide-head"><span class="lcd">MADE FOR A CONTROLLER</span></div>
+              <p>Sticks, D-pad and shoulder buttons drive everything, down to the on-screen keyboard. Nothing waits for a touchscreen.</p>
+              <div class="glyphs" aria-hidden="true">
+                <span class="g-dpad"></span>
+                <span class="g-btn red">A</span><span class="g-btn gold">B</span><span class="g-btn cream">X</span><span class="g-btn cream">Y</span>
+              </div>
+            </section>
+            <section class="slide" data-slide="saves" aria-hidden="true">
+              <div class="slide-head"><span class="lcd">SAVES TRAVEL WITH YOU</span></div>
+              <p>Battery saves and save states sync to the server while you play. The next device you pick up starts where the last one stopped.</p>
+              <div class="sync" aria-hidden="true">
+                <img src="/brand/gameio_icon.svg" width="44" height="44" alt="">
+                <span class="dots"><i></i><i></i><i></i><i></i><i></i></span>
+                <span class="server"></span>
+                <span class="lcd small">SYNCED</span>
+              </div>
+            </section>
+          </div>
+          <div class="hud" aria-hidden="true">
+            <span>&#9664; &#9654; SCREENS</span>
+            <span><b>A</b> DOWNLOAD</span>
+          </div>
+          <div class="boot" id="boot" aria-hidden="true"></div>
+        </div>
+        <div class="under">
+          <span class="wordmark">GAMEIO</span>
+          <span class="leds" id="leds" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></span>
+          <span class="status lcd small" id="status">READY</span>
+        </div>
+      </div>
+
+      <div class="face" role="group" aria-label="Face buttons">
+        <button type="button" class="btn x" data-btn="x" aria-label="X">X</button>
+        <button type="button" class="btn y" data-btn="y" aria-label="Y">Y</button>
+        <button type="button" class="btn a" data-btn="a" aria-label="A, download">A</button>
+        <button type="button" class="btn b" data-btn="b" aria-label="B">B</button>
+      </div>
+
+      <div class="pills">
+        <button type="button" class="pill" data-btn="select">SELECT</button>
+        <button type="button" class="pill" data-btn="start">START</button>
+      </div>
+      <span class="grille" aria-hidden="true"></span>
+    </div>
+  </header>
+
+  <section class="shell what">
+    <p class="kicker">What it is</p>
+    <h2>You are not browsing what you remembered to copy across.</h2>
+    <p class="lede">
+      Every console the server knows about shows up as shelves you scroll, the same way you
+      would scroll a streaming app. No folders, no scraping, no SD card to fill before you can
+      see what you have.
+    </p>
+    <div class="carts">
+      <article class="cart-card">
+        <div class="label red"><span class="lcd">BROWSE</span></div>
+        <h3>Browse, don't manage</h3>
+        <p>Shelves, search across the whole server, and A to Z jumps. Pick something, and it downloads while you keep looking.</p>
+      </article>
+      <article class="cart-card">
+        <div class="label gold"><span class="lcd">CONTROL</span></div>
+        <h3>Built for a controller</h3>
+        <p>Sticks, D-pad and shoulder buttons drive everything, down to the on-screen keyboard. Nothing here waits for you to reach for a touchscreen.</p>
+      </article>
+      <article class="cart-card">
+        <div class="label ink"><span class="lcd">SYNC</span></div>
+        <h3>Saves travel with you</h3>
+        <p>Battery saves and save states sync to the server while you play, so the next device you pick up starts where the last one stopped.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="shell how">
+    <p class="kicker">Getting on</p>
+    <h2>Three things, then you're playing.</h2>
+    <ol class="steps">
+      <li>
+        <span class="lcd">STEP 1/3</span>
+        <h3>Install it</h3>
+        <p>Download the APK and open it. Android asks to allow installs from this source the first time, which is normal outside the Play Store.</p>
+      </li>
+      <li>
+        <span class="lcd">STEP 2/3</span>
+        <h3>Point it at the server</h3>
+        <p>Enter <code>playgameio.com</code> when it asks for an address.</p>
+      </li>
+      <li>
+        <span class="lcd">STEP 3/3</span>
+        <h3>Sign in</h3>
+        <p>Username and password, the ones whoever runs the server gave you. That is the whole setup.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="shell close" id="get">
+    <h2>Insert cartridge.</h2>
+    <p class="sub">One APK. No account to create here, no store to go through.</p>
+    <div class="cta-row center">
+      <a class="cart-cta" id="download2" href="/apk/">
+        <span class="cart-shape">
+          <span class="cart-label">
+            <b>Download</b>
+            <small>Android APK</small>
+          </span>
+          <span class="cart-grooves"><i></i><i></i></span>
+        </span>
+      </a>
+      <span class="cta-meta">Accounts are issued by whoever runs this server</span>
+    </div>
+  </section>
+
+  <footer class="shell foot">
+    <span class="brand small"><img src="/brand/gameio_icon.svg" width="22" height="22" alt=""> Gameio</span>
+    <span><a href="/apk/">All builds</a> &middot; <a href="/">playgameio.com</a></span>
+  </footer>
+
+</div>
+</body>
+</html>
