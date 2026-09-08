@@ -2,4 +2,4 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-export type GameHostKind = 'internet_archive' | 'http';
+export type GameHostKind = 'internet_archive' | 'http' | 'torrent';

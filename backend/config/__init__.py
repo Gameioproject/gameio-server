@@ -89,6 +89,10 @@ REDIS_URL: Final[str] = str(
 )
 
 # IGDB
+# Debrid account that turns torrent-backed sources into direct links ("realdebrid").
+DEBRID_PROVIDER: Final[str] = (_get_env("DEBRID_PROVIDER") or "realdebrid").strip().lower()
+DEBRID_API_KEY: Final[str | None] = _get_env("DEBRID_API_KEY")
+
 IGDB_CLIENT_ID: Final[str | None] = _get_env("IGDB_CLIENT_ID")
 IGDB_CLIENT_SECRET: Final[str | None] = _get_env("IGDB_CLIENT_SECRET")
 

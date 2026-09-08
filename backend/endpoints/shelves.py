@@ -22,10 +22,9 @@ SHELVES: list[dict[str, Any]] = [
     {
         "key": "top-rated",
         "title": "Top rated",
-        # Drawn at random from everything well rated, so the row differs each
-        # time Home is opened. The client caps the row; the server does not page
-        # a random order, because offsets into a reshuffled set repeat games.
-        "params": {"min_rating": 85, "order_by": "random"},
+        # A real ranking: best first, and only games enough people rated that
+        # the score means something (a 90 from three votes is not top rated).
+        "params": {"min_rating_count": 200, "order_by": "rating", "order_dir": "desc"},
     },
 ]
 

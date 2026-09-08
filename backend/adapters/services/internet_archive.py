@@ -1,7 +1,7 @@
 """Read-only client for the Internet Archive metadata API."""
 
 import re
-from typing import Final, TypedDict
+from typing import Final, NotRequired, TypedDict
 from urllib.parse import unquote, urlsplit
 
 from utils.context import ctx_httpx_client
@@ -44,6 +44,8 @@ class IAFile(TypedDict):
     size: int | None
     md5: str | None
     sha1: str | None
+    # Position in a torrent's file list, for hosts that are torrents.
+    index: NotRequired[int | None]
 
 
 def _to_int(value: object) -> int | None:

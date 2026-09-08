@@ -56,9 +56,16 @@ NON_GAME_EXTENSIONS: Final = frozenset(
         "xls",
         "xlsx",
         "diz",
+        "partial",
     }
 )
 UNMATCHED_SAMPLE_SIZE: Final = 25
+# Dump tags that mark a disc as something other than the released game.
+NOT_THE_GAME_TAGS: Final = re.compile(
+    r"\((?:[^)]*\b(?:demo|taikenban|beta|proto|prototype|sample|kiosk|trial|preview"
+    r"|widescreen|60 ?fps|hack|patched|undub)\b[^)]*)\)",
+    re.IGNORECASE,
+)
 
 __all__ = [
     "IndexStats",
@@ -97,6 +104,8 @@ def is_game_file(file: IAFile) -> bool:
         return False
     name = file["name"].lower()
     if name.endswith(IA_METADATA_SUFFIXES):
+        return False
+    if NOT_THE_GAME_TAGS.search(name.rsplit("/", 1)[-1]):
         return False
     return compute_file_extension(name) not in NON_GAME_EXTENSIONS
 
@@ -188,6 +197,7 @@ def index_host_files(
                 "md5": file["md5"],
                 "sha1": file["sha1"],
                 "region": _region(filename),
+                "file_index": file.get("index"),
             }
         )
 

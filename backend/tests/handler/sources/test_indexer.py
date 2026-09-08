@@ -128,3 +128,22 @@ def test_index_host_files_without_platform_hint(games):
         host, [_file("PaRappa the Rapper (USA).chd")], default_platform="psx"
     )
     assert detected.matched == 1
+
+
+@pytest.mark.parametrize(
+    ("name", "expected"),
+    [
+        ("Redump/Sony - PlayStation 2/Shadow of the Colossus (USA).zip", True),
+        ("Redump/Sony - PlayStation 2/Shadow of the Colossus (USA) (Demo).zip", False),
+        ("Ico (Japan) (Taikenban).zip", False),
+        ("Game (USA) (Beta 2).zip", False),
+        ("Game (USA) (Proto).zip", False),
+        ("Demolition Racer (USA).zip", True),
+        ("007 - Agent Under Fire (USA) (Widescreen + 60FPS Driving) (v1.0) (Souzooka).chd", False),
+        ("007 - Agent Under Fire (USA).chd.729c02d5.partial", False),
+        ("007 - Agent Under Fire (USA).chd", True),
+        ("Game (Europe) (En,Fr,De).zip", True),
+    ],
+)
+def test_is_game_file_skips_discs_that_are_not_the_game(name: str, expected: bool):
+    assert is_game_file(_file(name)) is expected

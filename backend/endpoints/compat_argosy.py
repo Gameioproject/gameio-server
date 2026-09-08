@@ -9,7 +9,10 @@ from pydantic import BaseModel
 
 from decorators.auth import protected_route
 from handler.auth.constants import Scope
+from adapters.services.debrid import DebridError
 from handler.compat import argosy
+from handler.sources.preference import preferred_sources
+from handler.sources.resolver import resolve_source_url
 from handler.database import (
     db_catalog_handler,
     db_collection_handler,
@@ -84,14 +87,18 @@ def _roms_for(request: Request, matches, slug: str) -> list[dict[str, Any]]:
     return roms
 
 
-def _roms_any_platform(request: Request, matches) -> list[dict[str, Any]]:
-    """Search results span platforms, so each game is returned under its own first one."""
+def _roms_any_platform(
+    request: Request, matches, prefer: list[str] | None = None
+) -> list[dict[str, Any]]:
+    """Search results span platforms, so each game is returned under its own first one,
+    or under the first of `prefer` it belongs to when the caller narrowed the platforms."""
     by_slug: dict[str, list[Any]] = {}
     for match in matches:
-        slugs = [p.platform_slug for p in match["game"].platforms]
+        slugs = sorted(p.platform_slug for p in match["game"].platforms)
         if not slugs:
             continue
-        by_slug.setdefault(sorted(slugs)[0], []).append(match)
+        chosen = next((p for p in (prefer or []) if p in slugs), slugs[0])
+        by_slug.setdefault(chosen, []).append(match)
     roms: list[dict[str, Any]] = []
     for slug, group in by_slug.items():
         roms.extend(_roms_for(request, group, slug))
@@ -111,6 +118,7 @@ def get_roms(
     year_from: Annotated[int | None, Query()] = None,
     year_to: Annotated[int | None, Query()] = None,
     hidden_platforms: Annotated[str | None, Query()] = None,
+    platform_slugs: Annotated[str | None, Query()] = None,
     order_by: Annotated[str, Query()] = "id",
     order_dir: Annotated[str, Query()] = "asc",
     limit: Annotated[int, Query(ge=1, le=ROMS_PAGE_MAX_LIMIT)] = 100,
@@ -120,7 +128,7 @@ def get_roms(
     first = (platform_ids or "").split(",")[0].strip()
     # Searches and filtered shelves span the server, so a platform is only
     # required for a completely unfiltered browse.
-    spans_server = search_term is not None or hidden_platforms is not None or any(
+    spans_server = search_term is not None or hidden_platforms is not None or platform_slugs is not None or any(
         v is not None
         for v in (
             owned, genre, min_rating, max_rating_count, min_rating_count,
@@ -145,6 +153,7 @@ def get_roms(
         "random": CatalogOrderBy.RANDOM,
     }
     excluded = [p for p in (hidden_platforms or "").split(",") if p.strip()]
+    included = [p for p in (platform_slugs or "").split(",") if p.strip()]
     matches, total = db_catalog_handler.get_games(
         search=search_term,
         owned=owned,
@@ -155,6 +164,7 @@ def get_roms(
         year_from=year_from,
         year_to=year_to,
         platform_slug=slug,
+        platform_slugs=included or None,
         exclude_platform_slugs=excluded or None,
         order_by=order_map.get(order_by, CatalogOrderBy.NAME),
         order_dir=CatalogOrderDir.DESC if order_dir == "desc" else CatalogOrderDir.ASC,
@@ -162,7 +172,7 @@ def get_roms(
         offset=offset,
     )
     return {
-        "items": _roms_for(request, matches, slug) if slug else _roms_any_platform(request, matches),
+        "items": _roms_for(request, matches, slug) if slug else _roms_any_platform(request, matches, included),
         "total": total,
         "limit": limit,
         "offset": offset,
@@ -207,27 +217,44 @@ def get_rom(request: Request, rom_id: int) -> dict[str, Any]:
     return _rom_or_404(request, rom_id)
 
 
-def _download_target(rom_id: int) -> str:
+async def _download_target(rom_id: int) -> str:
     game_id, slug = argosy.split_rom_id(rom_id)
     match = db_catalog_handler.get_game(game_id) if slug else None
     if match is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Rom {rom_id} not found"
         )
-    sources = [s for s in match["sources"] if s.platform_slug == slug]
+    sources = preferred_sources(
+        [s for s in match["sources"] if s.platform_slug == slug]
+    )
     if not sources:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"{match['game'].name} has no download link on {slug}",
         )
-    return sources[0].url
+    try:
+        return await resolve_source_url(sources[0])
+    except DebridError as exc:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+                if exc.retry_later
+                else status.HTTP_502_BAD_GATEWAY
+            ),
+            detail=str(exc),
+            headers={"Retry-After": "60"} if exc.retry_later else None,
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
 
 @protected_route(router.get, "/roms/{rom_id}/content/{file_name}", [Scope.ROMS_READ])
 @protected_route(router.head, "/roms/{rom_id}/content/{file_name}", [Scope.ROMS_READ])
-def download_rom(request: Request, rom_id: int, file_name: str) -> RedirectResponse:
+async def download_rom(request: Request, rom_id: int, file_name: str) -> RedirectResponse:
     """Argosy downloads through the classic route; the file lives on the game's host."""
-    return RedirectResponse(_download_target(rom_id), status_code=status.HTTP_302_FOUND)
+    return RedirectResponse(await _download_target(rom_id), status_code=status.HTTP_302_FOUND)
 
 
 class RomPropsUpdate(BaseModel):

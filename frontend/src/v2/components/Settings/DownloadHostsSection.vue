@@ -44,8 +44,22 @@ const submitting = ref(false);
 
 const kindItems = computed(() => [
   { title: t("catalog.hosts-kind-ia"), value: "internet_archive" },
+  { title: t("catalog.hosts-kind-torrent"), value: "torrent" },
   { title: t("catalog.hosts-kind-http"), value: "http" },
 ]);
+
+const kindLabel = (value: GameHostKind) =>
+  value === "internet_archive"
+    ? "Internet Archive"
+    : value === "torrent"
+      ? "MiNERVA torrent"
+      : "HTTP";
+const kindIcon = (value: GameHostKind) =>
+  value === "internet_archive"
+    ? "mdi-archive-outline"
+    : value === "torrent"
+      ? "mdi-magnet"
+      : "mdi-server";
 
 const platformItems = computed(() => [
   { title: t("catalog.hosts-any-platform"), value: "" },
@@ -223,12 +237,16 @@ onBeforeUnmount(stopPoll);
         :label="
           kind === 'internet_archive'
             ? t('catalog.hosts-base-ia')
-            : t('catalog.hosts-base-http')
+            : kind === 'torrent'
+              ? t('catalog.hosts-base-torrent')
+              : t('catalog.hosts-base-http')
         "
         :placeholder="
           kind === 'internet_archive'
             ? 'https://archive.org/details/roms-bestset-nintendo-64'
-            : 'https://files.example.com/roms'
+            : kind === 'torrent'
+              ? 'https://minerva-archive.org/browse/./Redump/Sony - PlayStation 2/'
+              : 'https://files.example.com/roms'
         "
         density="compact"
         hide-details
@@ -264,21 +282,12 @@ onBeforeUnmount(stopPoll);
       <li v-for="host in hosts" :key="host.id" class="r-v2-hosts__row">
         <div class="r-v2-hosts__main">
           <div class="r-v2-hosts__title">
-            <RIcon
-              :icon="
-                host.kind === 'internet_archive'
-                  ? 'mdi-archive-outline'
-                  : 'mdi-server'
-              "
-              size="18"
-            />
+            <RIcon :icon="kindIcon(host.kind)" size="18" />
             <span class="r-v2-hosts__name">{{ host.name }}</span>
             <RTag
               size="x-small"
               tone="neutral"
-              :text="
-                host.kind === 'internet_archive' ? 'Internet Archive' : 'HTTP'
-              "
+              :text="kindLabel(host.kind)"
             />
             <RTag
               v-if="host.platform_slug"
@@ -321,7 +330,7 @@ onBeforeUnmount(stopPoll);
             @update:model-value="setEnabled(host, !!$event)"
           />
           <RBtn
-            v-if="host.kind === 'internet_archive'"
+            v-if="host.kind !== 'http'"
             variant="outlined"
             size="small"
             prepend-icon="mdi-refresh"

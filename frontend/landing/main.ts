@@ -1,27 +1,45 @@
 import "./styles.css";
-import { mountHandheld } from "./handheld";
+import { mountShelves } from "./browse";
 import { nameLatestBuild } from "./build";
+import { TOTAL_SYSTEMS, TOTAL_TITLES } from "./shelves";
 
-const device = document.getElementById("device");
-const download = document.getElementById("download") as HTMLAnchorElement | null;
+const download = document.getElementById(
+  "download",
+) as HTMLAnchorElement | null;
+const shelves = document.getElementById("shelves");
+const status = document.getElementById("status");
 
-if (device) {
-  mountHandheld(device, () => {
-    if (!download) return;
-    download.scrollIntoView({ block: "center", behavior: "smooth" });
-    download.focus({ preventScroll: true });
-  });
+if (shelves) {
+  mountShelves(
+    shelves,
+    {
+      backdrop: document.getElementById("backdrop") as HTMLImageElement | null,
+      cover: document.getElementById("f-cover") as HTMLImageElement | null,
+      platform: document.getElementById("f-platform"),
+      year: document.getElementById("f-year"),
+      rating: document.getElementById("f-rating"),
+      shelf: document.getElementById("f-shelf"),
+      name: document.getElementById("f-name"),
+      summary: document.getElementById("f-summary"),
+    },
+    status,
+    () => {
+      if (!download) return;
+      download.scrollIntoView({ block: "center", behavior: "smooth" });
+      download.focus({ preventScroll: true });
+    },
+  );
+}
+
+if (status) {
+  status.textContent = `${TOTAL_TITLES.toLocaleString("en")} titles · ${TOTAL_SYSTEMS} systems`;
 }
 
 nameLatestBuild(
-  [download, document.getElementById("download2") as HTMLAnchorElement | null],
+  [
+    download,
+    document.getElementById("download-top") as HTMLAnchorElement | null,
+    document.getElementById("download2") as HTMLAnchorElement | null,
+  ],
   document.getElementById("build-meta"),
 );
-
-const clock = document.getElementById("clock");
-function tick(): void {
-  if (!clock) return;
-  clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-tick();
-window.setInterval(tick, 15000);
