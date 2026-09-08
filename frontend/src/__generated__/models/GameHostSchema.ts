@@ -8,6 +8,7 @@ export type GameHostSchema = {
     name: string;
     kind: GameHostKind;
     base: string;
+    info_hash?: (string | null);
     platform_slug: (string | null);
     enabled: boolean;
     source_count: number;

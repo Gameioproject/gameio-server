@@ -1,9 +1,7 @@
 import enum
 from collections import defaultdict
 from collections.abc import Callable, Sequence
-from typing import TypedDict
-
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import Select, case, func, select
 from sqlalchemy.orm import Session
@@ -67,7 +65,9 @@ class CatalogFacetCount(TypedDict):
 
 
 def _owned_games(
-    platform_slug: str | None = None, exclude_platform_slugs: list[str] | None = None
+    platform_slug: str | None = None,
+    exclude_platform_slugs: list[str] | None = None,
+    platform_slugs: list[str] | None = None,
 ):
     """Catalog game ids with a source on an enabled host, optionally for one platform."""
     query = (
@@ -77,6 +77,8 @@ def _owned_games(
     )
     if platform_slug:
         query = query.where(GameSource.platform_slug == platform_slug)
+    if platform_slugs:
+        query = query.where(GameSource.platform_slug.in_(platform_slugs))
     if exclude_platform_slugs:
         query = query.where(GameSource.platform_slug.not_in(exclude_platform_slugs))
     return query
@@ -306,7 +308,9 @@ class DBCatalogHandler(DBBaseHandler):
                 )
             )
         # Owning a game on one platform does not make it owned on another.
-        owned_games = _owned_games(platform_slug, exclude_platform_slugs)
+        owned_games = _owned_games(
+            platform_slug, exclude_platform_slugs, platform_slugs
+        )
         if owned is True:
             query = query.where(CatalogGame.id.in_(owned_games))
         elif owned is False:
@@ -360,14 +364,37 @@ class DBCatalogHandler(DBBaseHandler):
     def get_random_game(
         self,
         min_rating: float,
+        platform_slugs: list[str] | None = None,
+        owned: bool = False,
         session: Session = None,  # type: ignore
     ) -> CatalogGame | None:
-        return session.scalar(
-            select(CatalogGame)
-            .where(CatalogGame.rating >= min_rating)
-            .order_by(func.rand())
-            .limit(1)
+        query = select(CatalogGame).where(CatalogGame.rating >= min_rating)
+        if platform_slugs is not None:
+            query = query.where(
+                CatalogGame.id.in_(
+                    select(CatalogGamePlatform.catalog_game_id).where(
+                        CatalogGamePlatform.platform_slug.in_(platform_slugs)
+                    )
+                )
+            )
+        if owned:
+            sources = (
+                select(GameSource.id)
+                .join(GameHost)
+                .where(
+                    GameSource.catalog_game_id == CatalogGame.id,
+                    GameHost.enabled.is_(True),
+                )
+            )
+            if platform_slugs is not None:
+                sources = sources.where(GameSource.platform_slug.in_(platform_slugs))
+            query = query.where(sources.exists())
+        random_order = (
+            func.random()
+            if session.get_bind().dialect.name == "postgresql"
+            else func.rand()
         )
+        return session.scalar(query.order_by(random_order).limit(1))
 
     @begin_session
     def get_platform_counts(
