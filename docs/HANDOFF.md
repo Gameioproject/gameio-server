@@ -101,3 +101,58 @@ self-registration. QuayPass ships dark (no server for it; release gate only warn
   distinct games — verified correct data, just ambiguous wording; user hasn't chosen
   between "29,183 games" and "38,302 titles").
 - Landing page + APK route are dev-served only; production needs the droplet.
+
+## Torrent-backed hosts (MiNERVA Archive) — 2026-09-07
+
+MiNERVA (the Myrient mirror) serves nothing over HTTP: a listing directory is one torrent and
+each file page only carries the file's path inside it plus hashes. It is supported as a third
+host kind, `torrent`, alongside Internet Archive items and HTTP servers:
+
+- `adapters/services/minerva.py` parses a browse-directory or `.torrent` link, finds the torrent
+  behind a directory (via its first file page), and decodes the torrent file into the file list
+  the indexer already understands. The host's `info_hash` is stored on index.
+- `tasks/manual/index_game_host.py` indexes torrent hosts from that file list; the platform is
+  read off the directory name. The PS2 folder (12,157 files) indexed 6,498 sources once demo/beta/proto discs are skipped (`NOT_THE_GAME_TAGS`); `handler/sources/preference.py` serves direct hosts before torrents and USA/World/Europe before Japan.
+- Downloads never touch the swarm. `handler/sources/resolver.py` turns a torrent source into a
+  direct link through `adapters/services/debrid.py` (Real-Debrid: add magnet, select the one
+  file, unrestrict), cached in Redis for 6 h. Configure `DEBRID_PROVIDER=realdebrid` and
+  `DEBRID_API_KEY`. Without a key the download endpoints answer 502 with a plain message; a
+  torrent the service is still fetching answers 503 with Retry-After.
+- Sources keep their creation order, so for a game that has both, the Internet Archive source is
+  still the one served; MiNERVA fills the gaps.
+- Migration `0121_torrent_hosts` widens the `gamehostkind` enum and adds `game_hosts.info_hash`.
+- `upsert_sources` keys paths case-insensitively (the MariaDB unique index does), so listings
+  with "Ar tonelico" next to "Ar Tonelico" no longer fail as a whole.
+
+### Debrid size limits (2026-09-07, later)
+
+Debrid services cap a torrent by its *total* size (Real-Debrid error 29 "Torrent too big"),
+and a v1 info hash pins the whole file list, so selecting one file does not shrink what the
+service sees. MiNERVA's full Redump PS2 torrent is 17.2 TB. Two mitigations are in place:
+
+- Smaller torrents first: the index records `torrent_size` in the host's stats and
+  `handler/sources/preference.py` serves the smallest torrent that has the game. Host 14
+  "minerva-ps2-ra" indexes MiNERVA's `RetroAchievements/RA - Sony Playstation 2/` folder
+  (1.67 TB, 18 seeders, 784 sources / 614 games, `.chd`), which covers 611 games that the
+  17 TB set also has.
+- Named errors: the resolver maps Real-Debrid codes 29 (too big, `DebridError.too_big`) and
+  21/23/36 (limits, `retry_later`) so the download endpoint's message says what happened.
+- `.partial` files and patched builds (Widescreen, 60FPS, hack, patched, undub) are skipped
+  when indexing, like demo/beta/proto discs.
+
+If Real-Debrid still refuses the 1.67 TB torrent, the remaining options are a provider with a
+higher cap (TorBox, AllDebrid) behind the same resolver interface, or a server-side libtorrent
+fetch of the single file (no size cap, but the server joins the swarm).
+
+### Single-game downloads on MiNERVA (verified 2026-09-07)
+
+MiNERVA has no per-game torrent. Its "single game" mechanism is the platform torrent plus a
+BEP 53 "select only" parameter: the basket feature (`/js/account.js`) writes
+`<magnet>&so=<so_id>` per file, and `so_id` is the file's index in the torrent's file list
+(checked: index 0 = "0 Story (Japan) (Disc 1)", 12147 = "_summer Double Sharp (Japan)"). The
+info hash, and therefore what a debrid service measures, is unchanged. Migration
+`0122_source_file_index` stores that index on `game_sources.file_index`; `GameSource.magnet`
+builds the select-only magnet, the resolver hands it to debrid (explicit file selection still
+follows), and the catalog API exposes it as `sources[].magnet` for clients with their own
+torrent client. Roadmap: the basket is "planned", V2 torrents "in progress"; nothing announced
+about per-game torrents.

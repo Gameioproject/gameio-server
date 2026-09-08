@@ -3,6 +3,12 @@ from adapters.services.internet_archive import (
     fetch_item_metadata,
     parse_item_identifier,
 )
+from adapters.services.minerva import (
+    fetch_torrent,
+    fetch_torrent_url,
+    parse_minerva_link,
+    torrent_files_as_listing,
+)
 from handler.database import db_game_source_handler
 from handler.sources.indexer import index_host_files
 from handler.sources.platforms import platform_from_files, platform_from_text
@@ -28,6 +34,8 @@ class IndexGameHostTask(Task):
         host = db_game_source_handler.get_host(host_id)
         if host is None:
             raise ValueError(f"Game host {host_id} not found")
+        if host.kind == GameHostKind.TORRENT:
+            return await self._run_torrent(host)
         if host.kind != GameHostKind.INTERNET_ARCHIVE:
             raise ValueError(f"Host kind {host.kind} cannot be listed")
 
@@ -54,6 +62,37 @@ class IndexGameHostTask(Task):
             f"Indexed {host.name}: {stats.matched} matched, {stats.unmatched} unmatched"
         )
         return stats.to_dict()
+
+    async def _run_torrent(self, host) -> dict:
+        """A MiNERVA directory is one torrent: its file list is the listing."""
+        locator = parse_minerva_link(host.base)
+        log.info(f"Indexing {host.name} ({locator.canonical})...")
+        db_game_source_handler.mark_index_started(host.id)
+        try:
+            torrent_url = await fetch_torrent_url(locator)
+            torrent = await fetch_torrent(torrent_url)
+            db_game_source_handler.update_host(host.id, info_hash=torrent.info_hash)
+            files = torrent_files_as_listing(torrent, locator.directory)
+            platform_slug = host.platform_slug or platform_from_text(
+                locator.directory, torrent.name, torrent_url
+            ) or platform_from_files([f["name"] for f in files])
+            if platform_slug and not host.platform_slug:
+                db_game_source_handler.update_host(host.id, platform_slug=platform_slug)
+            stats = index_host_files(host, files, default_platform=platform_slug)
+        except Exception:
+            db_game_source_handler.mark_index_finished(host.id, None)
+            raise
+        result = stats.to_dict()
+        # The whole torrent's size decides which torrent host serves a game first:
+        # debrid services cap torrents by their total size, not by the file picked.
+        result["torrent_size"] = sum(f.size for f in torrent.files)
+        result["torrent_files"] = len(torrent.files)
+        db_game_source_handler.mark_index_finished(host.id, result)
+        update_job_meta({"index_stats": result})
+        log.info(
+            f"Indexed {host.name}: {stats.matched} matched, {stats.unmatched} unmatched"
+        )
+        return result
 
 
 async def _detect_platform(identifier: str, file_names: list[str]) -> str | None:

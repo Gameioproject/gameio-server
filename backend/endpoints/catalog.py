@@ -24,7 +24,10 @@ from handler.database import (
 from handler.database.catalog_handler import CatalogOrderBy, CatalogOrderDir
 from handler.metadata.platforms import IGDB_PLATFORM_LIST
 from handler.metadata.platforms import UniversalPlatformSlug as UPS
+from adapters.services.debrid import DebridError
 from handler.sources.locator import find_or_create_host, parse_direct_link
+from handler.sources.preference import preferred_sources
+from handler.sources.resolver import resolve_source_url
 from models.game_source import GameSource
 from utils.context import ctx_httpx_client
 from utils.router import APIRouter
@@ -196,7 +199,7 @@ def get_catalog_game(request: Request, igdb_id: int) -> CatalogGameSchema:
         status.HTTP_404_NOT_FOUND: {},
     },
 )
-def download_catalog_game(
+async def download_catalog_game(
     request: Request,
     igdb_id: int,
     source_id: Annotated[
@@ -205,6 +208,7 @@ def download_catalog_game(
 ) -> RedirectResponse:
     """Redirect to the game's file on its host; the server never serves the bytes."""
     source = _pick_source(igdb_id, source_id)
+    url = await _resolve(source)
     headers = {"X-Source-Filename": source.filename}
     if source.size is not None:
         headers["X-Source-Size"] = str(source.size)
@@ -212,13 +216,31 @@ def download_catalog_game(
         headers["X-Source-MD5"] = source.md5
     if source.sha1:
         headers["X-Source-SHA1"] = source.sha1
-    return RedirectResponse(
-        url=source.url, status_code=status.HTTP_302_FOUND, headers=headers
-    )
+    return RedirectResponse(url=url, status_code=status.HTTP_302_FOUND, headers=headers)
+
+
+async def _resolve(source: GameSource) -> str:
+    """The link a client fetches: the host's own, or one minted by the debrid account."""
+    try:
+        return await resolve_source_url(source)
+    except DebridError as exc:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+                if exc.retry_later
+                else status.HTTP_502_BAD_GATEWAY
+            ),
+            detail=str(exc),
+            headers={"Retry-After": "60"} if exc.retry_later else None,
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
 
 
 def _pick_source(igdb_id: int, source_id: int | None) -> GameSource:
-    sources = _get_match(igdb_id)["sources"]
+    sources = preferred_sources(_get_match(igdb_id)["sources"])
     if source_id is not None:
         sources = [s for s in sources if s.id == source_id]
     if not sources:
@@ -234,12 +256,13 @@ async def _stream_source(
 ) -> StreamingResponse:
     """Pipe the file from its host to the client without storing it."""
     client = ctx_httpx_client.get()
+    url = await _resolve(source)
     upstream_headers = {}
     if range_header := request.headers.get("range"):
         upstream_headers["Range"] = range_header
     upstream = client.stream(
         "HEAD" if head_only else "GET",
-        source.url,
+        url,
         headers=upstream_headers,
         follow_redirects=True,
         timeout=STREAM_TIMEOUT,
@@ -322,13 +345,13 @@ async def head_catalog_game_stream(
         status.HTTP_404_NOT_FOUND: {},
     },
 )
-def head_catalog_game_download(
+async def head_catalog_game_download(
     request: Request,
     igdb_id: int,
     source_id: Annotated[int | None, Query()] = None,
 ) -> RedirectResponse:
     """EmulatorJS probes the game URL with HEAD before fetching it."""
-    return download_catalog_game(request, igdb_id, source_id)
+    return await download_catalog_game(request, igdb_id, source_id)
 
 
 @protected_route(
