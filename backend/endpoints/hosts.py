@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException, Request, status
 
 from adapters.services.internet_archive import parse_item_identifier
+from adapters.services.minerva import parse_minerva_link
 from config import TASK_RESULT_TTL
 from decorators.auth import protected_route
 from endpoints.responses.game_source import (
@@ -48,13 +49,15 @@ def get_hosts(request: Request) -> list[GameHostSchema]:
 @protected_route(router.post, "", [Scope.ROMS_WRITE])
 def add_host(request: Request, body: GameHostCreateSchema) -> GameHostSchema:
     base = body.base.strip()
-    if body.kind == GameHostKind.INTERNET_ARCHIVE:
-        try:
+    try:
+        if body.kind == GameHostKind.INTERNET_ARCHIVE:
             base = parse_item_identifier(base)
-        except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-            ) from exc
+        elif body.kind == GameHostKind.TORRENT:
+            base = parse_minerva_link(base).canonical
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
     host = db_game_source_handler.add_host(
         name=body.name,
         kind=body.kind,
@@ -114,7 +117,7 @@ def delete_host(request: Request, host_id: int) -> None:
 def index_host(request: Request, host_id: int) -> GameHostIndexSchema:
     """Queue a listing of the host so its files become download sources."""
     host = _get_host(host_id)
-    if host.kind != GameHostKind.INTERNET_ARCHIVE:
+    if host.kind == GameHostKind.HTTP:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Hosts of kind {host.kind} cannot be listed; add sources by hand",

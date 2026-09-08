@@ -30,6 +30,8 @@ class GameSourceSchema(BaseModel):
     md5: str | None
     sha1: str | None
     region: str | None
+    # Torrent hosts only: a "select only" magnet for this one file.
+    magnet: str | None = None
 
     @classmethod
     def from_source(cls, source: GameSource) -> "GameSourceSchema":
@@ -43,6 +45,7 @@ class GameSourceSchema(BaseModel):
             md5=source.md5,
             sha1=source.sha1,
             region=source.region,
+            magnet=source.magnet,
         )
 
 
@@ -53,6 +56,7 @@ class GameHostSchema(BaseModel):
     name: str
     kind: GameHostKind
     base: str
+    info_hash: str | None = None
     platform_slug: str | None
     enabled: bool
     source_count: int
@@ -67,6 +71,7 @@ class GameHostSchema(BaseModel):
             name=host.name,
             kind=host.kind,
             base=host.base,
+            info_hash=host.info_hash,
             platform_slug=host.platform_slug,
             enabled=host.enabled,
             source_count=source_count,

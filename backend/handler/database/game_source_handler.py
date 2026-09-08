@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, TypedDict
+from typing import Any, TypedDict, NotRequired
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ class GameSourceInput(TypedDict):
     md5: str | None
     sha1: str | None
     region: str | None
+    file_index: NotRequired[int | None]
 
 
 class DBGameSourceHandler(DBBaseHandler):
@@ -57,6 +58,7 @@ class DBGameSourceHandler(DBBaseHandler):
         base: str | None = None,
         platform_slug: str | None = None,
         enabled: bool | None = None,
+        info_hash: str | None = None,
         session: Session = None,  # type: ignore
     ) -> GameHost | None:
         host = session.get(GameHost, host_id)
@@ -66,6 +68,8 @@ class DBGameSourceHandler(DBBaseHandler):
             host.name = name
         if base is not None:
             host.base = base
+        if info_hash is not None:
+            host.info_hash = info_hash
         if platform_slug is not None:
             host.platform_slug = platform_slug or None
         if enabled is not None:
@@ -135,9 +139,14 @@ class DBGameSourceHandler(DBBaseHandler):
         sources: Sequence[GameSourceInput],
         session: Session = None,  # type: ignore
     ) -> tuple[int, int]:
-        """Insert or update sources of one host keyed by path. Returns (created, updated)."""
+        """Insert or update sources of one host keyed by path. Returns (created, updated).
+
+        Paths are keyed case-insensitively: the unique index compares them that way on
+        MariaDB, and a listing that holds "Ar tonelico" next to "Ar Tonelico" would
+        otherwise fail as a whole. The first spelling in the listing wins.
+        """
         existing = {
-            source.path: source
+            source.path.lower(): source
             for source in session.scalars(
                 select(GameSource).where(
                     GameSource.host_id == host_id,
@@ -146,8 +155,13 @@ class DBGameSourceHandler(DBBaseHandler):
             )
         }
         created = updated = 0
+        seen: set[str] = set()
         for data in sources:
-            source = existing.get(data["path"])
+            key = data["path"].lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            source = existing.get(key)
             if source is None:
                 source = GameSource(host_id=host_id, path=data["path"])
                 session.add(source)
@@ -161,6 +175,7 @@ class DBGameSourceHandler(DBBaseHandler):
             source.md5 = data["md5"]
             source.sha1 = data["sha1"]
             source.region = data["region"]
+            source.file_index = data.get("file_index")
         session.flush()
         return created, updated
 

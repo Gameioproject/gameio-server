@@ -210,6 +210,7 @@ class DBCatalogHandler(DBBaseHandler):
         *,
         search: str | None = None,
         platform_slug: str | None = None,
+        platform_slugs: list[str] | None = None,
         exclude_platform_slugs: list[str] | None = None,
         genre: str | None = None,
         min_rating: float | None = None,
@@ -237,6 +238,14 @@ class DBCatalogHandler(DBBaseHandler):
                 CatalogGame.id.in_(
                     select(CatalogGamePlatform.catalog_game_id).where(
                         CatalogGamePlatform.platform_slug == platform_slug
+                    )
+                )
+            )
+        if platform_slugs:
+            query = query.where(
+                CatalogGame.id.in_(
+                    select(CatalogGamePlatform.catalog_game_id).where(
+                        CatalogGamePlatform.platform_slug.in_(platform_slugs)
                     )
                 )
             )
