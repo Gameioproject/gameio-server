@@ -12,5 +12,6 @@ export type GameSourceSchema = {
     md5: (string | null);
     sha1: (string | null);
     region: (string | null);
+    magnet?: (string | null);
 };
 
