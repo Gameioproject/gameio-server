@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import ClassVar
 
 import pytest
 from fastapi import status
@@ -81,6 +82,7 @@ def owned_source(catalog_games, ia_host: GameHost) -> GameSource:
                 "md5": "a" * 32,
                 "sha1": "b" * 40,
                 "region": "USA",
+                "magnet": None,
             }
         ],
     )
@@ -149,6 +151,7 @@ class TestCatalogEndpoints:
                 "md5": "a" * 32,
                 "sha1": "b" * 40,
                 "region": "USA",
+                "magnet": None,
             }
         ]
         assert by_igdb[1074]["owned"] is False
@@ -402,7 +405,7 @@ class TestCatalogEndpoints:
 
         class FakeResponse:
             status_code = 206
-            headers = {
+            headers: ClassVar[dict[str, str]] = {
                 "content-length": "4",
                 "content-range": "bytes 0-3/12582912",
                 "accept-ranges": "bytes",
@@ -772,3 +775,125 @@ class TestPlayAndAssets:
             client.get(f"/api/assets/{asset['id']}/content", headers=viewer).status_code
             == status.HTTP_404_NOT_FOUND
         )
+
+
+class TestDiscoveryHome:
+    def test_cross_platform_ranking_and_pagination(
+        self, client, access_token, catalog_games
+    ):
+        db_catalog_handler.upsert_games(
+            [
+                _game(
+                    990001,
+                    "First",
+                    platform_slugs=["snes"],
+                    rating=99,
+                    rating_count=500,
+                ),
+                _game(
+                    990002,
+                    "Second",
+                    platform_slugs=["n64"],
+                    rating=98,
+                    rating_count=500,
+                ),
+                _game(
+                    990003,
+                    "Third",
+                    platform_slugs=["snes"],
+                    rating=97,
+                    rating_count=500,
+                ),
+                _game(
+                    990004,
+                    "Fourth",
+                    platform_slugs=["psx"],
+                    rating=96,
+                    rating_count=500,
+                ),
+            ]
+        )
+        headers = {"Authorization": f"Bearer {access_token}"}
+        query = "/api/roms?platform_slugs=snes,n64,psx&min_rating_count=200&order_by=rating&order_dir=desc"
+        first = client.get(query + "&limit=3", headers=headers)
+        second = client.get(query + "&limit=3&offset=3", headers=headers)
+        assert first.status_code == second.status_code == 200
+        assert [game["igdb_id"] for game in first.json()["items"]] == [
+            990001,
+            990002,
+            990003,
+        ]
+        assert [game["igdb_id"] for game in second.json()["items"]] == [990004]
+
+    def test_home_ranking_honors_followed_platforms(
+        self, client, access_token, catalog_games
+    ):
+        db_catalog_handler.upsert_games(
+            [
+                _game(
+                    990001,
+                    "Included",
+                    platform_slugs=["snes", "n64"],
+                    rating=95,
+                    rating_count=500,
+                ),
+                _game(
+                    990002,
+                    "Excluded",
+                    platform_slugs=["psx"],
+                    rating=99,
+                    rating_count=500,
+                ),
+            ]
+        )
+        response = client.get(
+            "/api/roms?platform_slugs=snes&min_rating_count=200&order_by=rating&order_dir=desc",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        assert response.status_code == 200
+        assert [game["igdb_id"] for game in response.json()["items"]] == [990001]
+        assert response.json()["items"][0]["platform_id"] == 19
+
+    def test_surprise_me_honors_platform_and_availability(
+        self, client, access_token, catalog_games, owned_source
+    ):
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = client.get(
+            "/api/roms/random?platform_slugs=n64&owned=true", headers=headers
+        )
+        assert response.status_code == 200
+        assert response.json()["igdb_id"] == 3475
+        response = client.get(
+            "/api/roms/random?platform_slugs=psx&owned=true", headers=headers
+        )
+        assert response.status_code == 404
+        response = client.get("/api/roms/random?platform_slugs=", headers=headers)
+        assert response.status_code == 404
+
+    def test_available_ranking_uses_the_platform_with_a_source(
+        self, client, access_token, catalog_games, owned_source
+    ):
+        db_catalog_handler.upsert_games(
+            [
+                _game(
+                    3475,
+                    "Dr. Mario 64",
+                    platform_slugs=["snes", "n64"],
+                    rating=90,
+                    rating_count=500,
+                )
+            ]
+        )
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = client.get(
+            "/api/roms?platform_slugs=snes,n64&owned=true&order_by=rating",
+            headers=headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["items"][0]["platform_id"] == 4
+        assert response.json()["items"][0]["fs_size_bytes"] == owned_source.size
+        response = client.get(
+            "/api/roms?platform_slugs=snes&owned=true&order_by=rating", headers=headers
+        )
+        assert response.json()["total"] == 0
+        assert response.json()["items"] == []

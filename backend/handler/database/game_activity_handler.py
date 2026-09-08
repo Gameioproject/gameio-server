@@ -1,8 +1,7 @@
+import hashlib
 from collections.abc import Sequence
 from datetime import datetime
 from typing import TypedDict
-
-import hashlib
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -17,6 +16,7 @@ from models.game_activity import (
     GamePlaySession,
     asset_unit_key,
 )
+from utils.datetime import to_utc
 
 from .base_handler import DBBaseHandler
 
@@ -98,7 +98,7 @@ class DBGameActivityHandler(DBBaseHandler):
             return play
         now = utc_now()
         play.last_activity_at = now
-        play.duration_seconds = int((now - play.started_at).total_seconds())
+        play.duration_seconds = int((now - to_utc(play.started_at)).total_seconds())
         if end:
             play.ended_at = now
         session.flush()

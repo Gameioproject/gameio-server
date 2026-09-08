@@ -9,11 +9,11 @@ action: one well-rated game drawn from the whole catalog.
 from typing import Annotated, Any
 
 from fastapi import HTTPException, Query, Request, status
+
 from decorators.auth import protected_route
+from endpoints.compat_argosy import _roms_for
 from handler.auth.constants import Scope
-from handler.compat.argosy import legacy_rom
 from handler.database import db_catalog_handler
-from handler.database.catalog_handler import CatalogOrderBy, CatalogOrderDir
 from utils.router import APIRouter
 
 router = APIRouter(tags=["shelves"])
@@ -39,20 +39,41 @@ def get_shelves(request: Request) -> list[dict[str, Any]]:
 def get_random_rom(
     request: Request,
     min_rating: Annotated[float, Query(ge=0, le=100)] = 75,
+    platform_slugs: Annotated[str | None, Query(max_length=2000)] = None,
+    owned: Annotated[bool, Query()] = False,
 ) -> dict[str, Any]:
     """One well-rated game from anywhere in the catalog, for Surprise Me."""
-    game = db_catalog_handler.get_random_game(min_rating)
+    included = (
+        None
+        if platform_slugs is None
+        else [slug.strip() for slug in platform_slugs.split(",") if slug.strip()]
+    )
+    game = db_catalog_handler.get_random_game(
+        min_rating, platform_slugs=included, owned=owned
+    )
     if game is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Catalog is empty"
         )
     match = db_catalog_handler.get_game(game.id)
-    slugs = sorted(p.platform_slug for p in game.platforms)
+    slugs = sorted(
+        p.platform_slug
+        for p in game.platforms
+        if included is None or p.platform_slug in included
+    )
     if match is None or not slugs:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Game has no platform"
         )
-    rom = legacy_rom(match["game"], slugs[0], match["sources"])
-    if rom is None:
+    slug = (
+        next(
+            (s.platform_slug for s in match["sources"] if s.platform_slug in slugs),
+            slugs[0],
+        )
+        if owned
+        else slugs[0]
+    )
+    roms = _roms_for(request, [match], slug)
+    if not roms:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unmappable")
-    return rom
+    return roms[0]
