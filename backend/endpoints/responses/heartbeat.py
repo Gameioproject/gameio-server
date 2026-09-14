@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class SystemDict(TypedDict):
@@ -38,6 +38,7 @@ class FrontendDict(TypedDict):
     DISABLE_USERPASS_LOGIN: bool
     DISABLE_LOGS_VIEWER: bool
     YOUTUBE_BASE_URL: str
+    SUPPORT_URL: NotRequired[str | None]
 
 
 class OIDCDict(TypedDict):

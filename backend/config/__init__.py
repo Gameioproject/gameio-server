@@ -90,7 +90,9 @@ REDIS_URL: Final[str] = str(
 
 # IGDB
 # Debrid account that turns torrent-backed sources into direct links ("realdebrid").
-DEBRID_PROVIDER: Final[str] = (_get_env("DEBRID_PROVIDER") or "realdebrid").strip().lower()
+DEBRID_PROVIDER: Final[str] = (
+    (_get_env("DEBRID_PROVIDER") or "realdebrid").strip().lower()
+)
 DEBRID_API_KEY: Final[str | None] = _get_env("DEBRID_API_KEY")
 
 IGDB_CLIENT_ID: Final[str | None] = _get_env("IGDB_CLIENT_ID")
@@ -300,6 +302,10 @@ DISABLE_RUFFLE_RS: Final[bool] = safe_str_to_bool(_get_env("DISABLE_RUFFLE_RS"))
 # FRONTEND
 KIOSK_MODE: Final[bool] = safe_str_to_bool(_get_env("KIOSK_MODE"))
 DISABLE_LOGS_VIEWER: Final[bool] = safe_str_to_bool(_get_env("DISABLE_LOGS_VIEWER"))
+GAMEIO_SUPPORT_URL: Final[str | None] = _get_env("GAMEIO_SUPPORT_URL")
+GAMEIO_CLIENT_ADDONS_ONLY: Final[bool] = safe_str_to_bool(
+    _get_env("GAMEIO_CLIENT_ADDONS_ONLY", "false")
+)
 
 # ASSETS
 MAX_ASSET_UPLOAD_SIZE_BYTES: Final[int] = safe_int(

@@ -5,6 +5,7 @@ import httpx
 from fastapi import HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse, StreamingResponse
 
+from adapters.services.debrid import DebridError
 from decorators.auth import protected_route
 from endpoints.responses.catalog import (
     CatalogFiltersSchema,
@@ -14,6 +15,7 @@ from endpoints.responses.catalog import (
     CatalogPlatformSchema,
 )
 from endpoints.responses.game_source import GameSourceCreateSchema, GameSourceSchema
+from endpoints.source_policy import require_server_sources
 from handler.auth.constants import Scope
 from handler.database import (
     db_catalog_handler,
@@ -24,8 +26,8 @@ from handler.database import (
 from handler.database.catalog_handler import CatalogOrderBy, CatalogOrderDir
 from handler.metadata.platforms import IGDB_PLATFORM_LIST
 from handler.metadata.platforms import UniversalPlatformSlug as UPS
-from adapters.services.debrid import DebridError
 from handler.sources.locator import find_or_create_host, parse_direct_link
+from handler.sources.policy import server_sources_enabled
 from handler.sources.preference import preferred_sources
 from handler.sources.resolver import resolve_source_url
 from models.game_source import GameSource
@@ -130,8 +132,8 @@ def get_catalog_games(
         min_rating=min_rating,
         year_from=year_from,
         year_to=year_to,
-        owned=owned,
-        owned_platforms=owned_platforms,
+        owned=owned if server_sources_enabled() else None,
+        owned_platforms=owned_platforms if server_sources_enabled() else None,
         collection_id=collection_id,
         played_by=(
             request.user.id
@@ -160,13 +162,13 @@ def get_catalog_filters(request: Request) -> CatalogFiltersSchema:
     total_games, owned_games = db_catalog_handler.get_totals()
     return CatalogFiltersSchema(
         total_games=total_games,
-        owned_games=owned_games,
+        owned_games=owned_games if server_sources_enabled() else 0,
         platforms=[
             CatalogPlatformSchema(
                 slug=facet["value"],
                 name=_platform_name(facet["value"]),
                 game_count=facet["game_count"],
-                owned_count=facet["owned_count"],
+                owned_count=facet["owned_count"] if server_sources_enabled() else 0,
             )
             for facet in db_catalog_handler.get_platform_counts()
         ],
@@ -221,6 +223,7 @@ async def download_catalog_game(
 
 async def _resolve(source: GameSource) -> str:
     """The link a client fetches: the host's own, or one minted by the debrid account."""
+    require_server_sources()
     try:
         return await resolve_source_url(source)
     except DebridError as exc:
@@ -240,6 +243,7 @@ async def _resolve(source: GameSource) -> str:
 
 
 def _pick_source(igdb_id: int, source_id: int | None) -> GameSource:
+    require_server_sources()
     sources = preferred_sources(_get_match(igdb_id)["sources"])
     if source_id is not None:
         sources = [s for s in sources if s.id == source_id]
@@ -255,6 +259,7 @@ async def _stream_source(
     request: Request, source: GameSource, *, head_only: bool
 ) -> StreamingResponse:
     """Pipe the file from its host to the client without storing it."""
+    require_server_sources()
     client = ctx_httpx_client.get()
     url = await _resolve(source)
     upstream_headers = {}
@@ -364,6 +369,7 @@ def add_catalog_game_source(
     request: Request, igdb_id: int, body: GameSourceCreateSchema
 ) -> GameSourceSchema:
     """Attach a file on a host to a catalog game by hand, by host + path or by direct link."""
+    require_server_sources()
     match = _get_match(igdb_id)
     game = match["game"]
     platform_slug = body.platform_slug or next(iter(game.platform_slugs), None)
@@ -418,6 +424,7 @@ def add_catalog_game_source(
     responses={status.HTTP_404_NOT_FOUND: {}},
 )
 def delete_catalog_game_source(request: Request, source_id: int) -> None:
+    require_server_sources()
     if not db_game_source_handler.delete_source(source_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

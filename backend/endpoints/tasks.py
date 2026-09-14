@@ -21,6 +21,7 @@ from endpoints.responses import (
     WatcherTaskStatusResponse,
 )
 from endpoints.responses.tasks import GroupedTasksDict, TaskInfo
+from endpoints.source_policy import require_server_sources
 from handler.auth.constants import Scope
 from handler.redis_handler import (
     default_queue,
@@ -29,11 +30,9 @@ from handler.redis_handler import (
     low_prio_queue,
     redis_client,
 )
+from handler.sources.policy import server_sources_enabled
 from tasks.manual.index_game_host import index_game_host_task
-from tasks.tasks import (
-    Task,
-    TaskType,
-)
+from tasks.tasks import Task, TaskType
 from utils.router import APIRouter
 
 router = APIRouter(
@@ -172,6 +171,8 @@ async def list_tasks(request: Request) -> GroupedTasksDict:
     }
 
     for task in manual_tasks:
+        if task["name"] == "index_game_host" and not server_sources_enabled():
+            continue
         grouped_tasks["manual"].append(_build_task_info(task["name"], task["task"]))
 
     for task in scheduled_tasks:
@@ -291,6 +292,9 @@ async def run_single_task(
         TaskExecutionResponse: Task execution response with details
     """
     all_tasks = {task["name"]: task["task"] for task in manual_tasks + scheduled_tasks}
+
+    if task_name == "index_game_host":
+        require_server_sources()
 
     if task_name not in all_tasks:
         available_tasks = list(all_tasks.keys())

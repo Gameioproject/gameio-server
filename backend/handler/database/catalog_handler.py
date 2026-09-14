@@ -3,10 +3,11 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from typing import Any, TypedDict
 
-from sqlalchemy import Select, case, func, select
+from sqlalchemy import Select, case, func, literal, select
 from sqlalchemy.orm import Session
 
 from decorators.database import begin_session
+from handler.sources.policy import server_sources_enabled
 from models.catalog import CatalogGame, CatalogGameGenre, CatalogGamePlatform
 from models.collection import CollectionGame
 from models.game_activity import GamePlaySession
@@ -230,6 +231,9 @@ class DBCatalogHandler(DBBaseHandler):
         offset: int = 0,
         session: Session = None,  # type: ignore
     ) -> tuple[list[CatalogGameMatch], int]:
+        if not server_sources_enabled():
+            owned = None
+            owned_platforms = None
         query: Select = select(CatalogGame)
 
         if search:
@@ -377,7 +381,7 @@ class DBCatalogHandler(DBBaseHandler):
                     )
                 )
             )
-        if owned:
+        if owned and server_sources_enabled():
             sources = (
                 select(GameSource.id)
                 .join(GameHost)
@@ -411,7 +415,11 @@ class DBCatalogHandler(DBBaseHandler):
             )
             .exists()
         )
-        owned_flag = case((owned_on_platform, 1), else_=0)
+        owned_flag = (
+            case((owned_on_platform, 1), else_=0)
+            if server_sources_enabled()
+            else literal(0)
+        )
         rows = session.execute(
             select(
                 CatalogGamePlatform.platform_slug,
@@ -448,6 +456,8 @@ class DBCatalogHandler(DBBaseHandler):
     ) -> tuple[int, int]:
         """Return (catalog size, games with a download source)."""
         total = session.scalar(select(func.count(CatalogGame.id))) or 0
+        if not server_sources_enabled():
+            return total, 0
         owned = (
             session.scalar(
                 select(func.count(func.distinct(GameSource.catalog_game_id)))
@@ -465,9 +475,13 @@ class DBCatalogHandler(DBBaseHandler):
         played_by: int | None = None,
     ) -> list:
         added_at = (
-            select(func.max(GameSource.created_at))
-            .where(GameSource.catalog_game_id == CatalogGame.id)
-            .scalar_subquery()
+            CatalogGame.id
+            if not server_sources_enabled()
+            else (
+                select(func.max(GameSource.created_at))
+                .where(GameSource.catalog_game_id == CatalogGame.id)
+                .scalar_subquery()
+            )
         )
         last_played = (
             select(func.max(GamePlaySession.last_activity_at))
@@ -502,7 +516,7 @@ class DBCatalogHandler(DBBaseHandler):
     def _sources_by_game(
         session: Session, game_ids: Sequence[int]
     ) -> dict[int, list[GameSource]]:
-        if not game_ids:
+        if not game_ids or not server_sources_enabled():
             return {}
         grouped: dict[int, list[GameSource]] = defaultdict(list)
         for source in session.scalars(

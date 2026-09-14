@@ -5,6 +5,7 @@ from pydantic import ConfigDict
 
 from handler.database.catalog_handler import CatalogGameMatch
 from handler.database.game_activity_handler import PlayStats
+from handler.sources.policy import server_sources_enabled
 from models.catalog import CatalogGame
 
 from .base import BaseModel, UTCDatetime
@@ -48,7 +49,7 @@ class CatalogGameSchema(BaseModel):
         play_stats: Mapping[int, PlayStats] | None = None,
     ) -> "CatalogGameSchema":
         game: CatalogGame = match["game"]
-        sources = match["sources"]
+        sources = match["sources"] if server_sources_enabled() else []
         stats = (play_stats or {}).get(game.id)
         return cls(
             id=game.id,

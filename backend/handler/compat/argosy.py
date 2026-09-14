@@ -9,6 +9,7 @@ from typing import Any, Final
 
 from handler.metadata.platforms import IGDB_PLATFORM_LIST
 from handler.metadata.platforms import UniversalPlatformSlug as UPS
+from handler.sources.policy import server_sources_enabled
 from models.catalog import CatalogGame
 from models.game_source import GameSource
 
@@ -112,7 +113,11 @@ def legacy_rom(
     rid = rom_id(game.id, slug)
     if rid is None:
         return None
-    on_platform = [s for s in sources if s.platform_slug == slug]
+    on_platform = (
+        [s for s in sources if s.platform_slug == slug]
+        if server_sources_enabled()
+        else []
+    )
     primary = on_platform[0] if on_platform else None
     regions = sorted({s.region for s in on_platform if s.region})
     return {

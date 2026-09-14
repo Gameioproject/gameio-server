@@ -14,6 +14,7 @@ from endpoints.responses.heartbeat import HeartbeatResponse
 from handler.database import db_user_handler
 from utils import get_version
 from utils.router import APIRouter
+from utils.urls import get_support_url
 
 router = APIRouter(
     tags=["system"],
@@ -58,6 +59,7 @@ async def heartbeat() -> HeartbeatResponse:
             "DISABLE_USERPASS_LOGIN": DISABLE_USERPASS_LOGIN,
             "DISABLE_LOGS_VIEWER": DISABLE_LOGS_VIEWER,
             "YOUTUBE_BASE_URL": YOUTUBE_BASE_URL,
+            "SUPPORT_URL": get_support_url(),
         },
         "OIDC": {
             "ENABLED": OIDC_ENABLED,

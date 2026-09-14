@@ -1,10 +1,11 @@
 from collections.abc import Sequence
-from typing import Any, TypedDict, NotRequired
+from typing import Any, NotRequired, TypedDict
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from decorators.database import begin_session
+from handler.sources.policy import require_server_sources
 from models.base import utc_now
 from models.game_source import GameHost, GameHostKind, GameSource
 
@@ -37,6 +38,7 @@ class DBGameSourceHandler(DBBaseHandler):
         enabled: bool = True,
         session: Session = None,  # type: ignore
     ) -> GameHost:
+        require_server_sources()
         host = GameHost(
             name=name,
             kind=kind,
@@ -61,6 +63,7 @@ class DBGameSourceHandler(DBBaseHandler):
         info_hash: str | None = None,
         session: Session = None,  # type: ignore
     ) -> GameHost | None:
+        require_server_sources()
         host = session.get(GameHost, host_id)
         if host is None:
             return None
@@ -93,6 +96,7 @@ class DBGameSourceHandler(DBBaseHandler):
     def mark_index_started(
         self, host_id: int, session: Session = None  # type: ignore
     ) -> None:
+        require_server_sources()
         host = session.get(GameHost, host_id)
         if host is not None:
             host.index_started_at = utc_now()
@@ -104,6 +108,7 @@ class DBGameSourceHandler(DBBaseHandler):
         stats: dict[str, Any] | None,
         session: Session = None,  # type: ignore
     ) -> None:
+        require_server_sources()
         host = session.get(GameHost, host_id)
         if host is None:
             return
@@ -124,6 +129,7 @@ class DBGameSourceHandler(DBBaseHandler):
 
     @begin_session
     def delete_host(self, host_id: int, session: Session = None) -> bool:  # type: ignore
+        require_server_sources()
         host = session.get(GameHost, host_id)
         if host is None:
             return False
@@ -145,6 +151,7 @@ class DBGameSourceHandler(DBBaseHandler):
         MariaDB, and a listing that holds "Ar tonelico" next to "Ar Tonelico" would
         otherwise fail as a whole. The first spelling in the listing wins.
         """
+        require_server_sources()
         existing = {
             source.path.lower(): source
             for source in session.scalars(
@@ -209,6 +216,7 @@ class DBGameSourceHandler(DBBaseHandler):
 
     @begin_session
     def delete_source(self, source_id: int, session: Session = None) -> bool:  # type: ignore
+        require_server_sources()
         result = session.execute(delete(GameSource).where(GameSource.id == source_id))
         return bool(result.rowcount)
 
@@ -216,6 +224,7 @@ class DBGameSourceHandler(DBBaseHandler):
     def delete_sources_of_host(
         self, host_id: int, session: Session = None  # type: ignore
     ) -> int:
+        require_server_sources()
         result = session.execute(
             delete(GameSource).where(GameSource.host_id == host_id)
         )
