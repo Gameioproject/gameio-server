@@ -23,6 +23,8 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if op.get_bind().dialect.name not in ("mysql", "mariadb"):
+        return
     with op.batch_alter_table("game_assets") as batch_op:
         batch_op.alter_column(
             "content",
@@ -39,6 +41,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name not in ("mysql", "mariadb"):
+        return
     # Narrowing truncates anything over 64 KB, so drop those rows first rather
     # than silently corrupting saves.
     op.execute("DELETE FROM game_assets WHERE LENGTH(content) > 65535")

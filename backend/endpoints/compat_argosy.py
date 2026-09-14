@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from adapters.services.debrid import DebridError
 from decorators.auth import protected_route
+from endpoints.source_policy import require_server_sources
 from handler.auth.constants import Scope
 from handler.compat import argosy
 from handler.database import (
@@ -17,6 +18,7 @@ from handler.database import (
     db_game_activity_handler,
 )
 from handler.database.catalog_handler import CatalogOrderBy, CatalogOrderDir
+from handler.sources.policy import server_sources_enabled
 from handler.sources.preference import preferred_sources
 from handler.sources.resolver import resolve_source_url
 from utils.router import APIRouter
@@ -98,7 +100,7 @@ def _roms_any_platform(
         slugs = sorted(p.platform_slug for p in match["game"].platforms)
         if not slugs:
             continue
-        if owned:
+        if owned and server_sources_enabled():
             available = {source.platform_slug for source in match["sources"]}
             slugs = [
                 slug
@@ -182,7 +184,7 @@ def get_roms(
     included = [p for p in (platform_slugs or "").split(",") if p.strip()]
     matches, total = db_catalog_handler.get_games(
         search=search_term,
-        owned=owned,
+        owned=owned if server_sources_enabled() else None,
         genre=genre,
         min_rating=min_rating,
         max_rating_count=max_rating_count,
@@ -248,6 +250,7 @@ def get_rom(request: Request, rom_id: int) -> dict[str, Any]:
 
 
 async def _download_target(rom_id: int) -> str:
+    require_server_sources()
     game_id, slug = argosy.split_rom_id(rom_id)
     match = db_catalog_handler.get_game(game_id) if slug else None
     if match is None:
