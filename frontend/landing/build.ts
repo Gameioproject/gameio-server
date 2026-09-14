@@ -6,12 +6,12 @@ interface LatestBuild {
 
 const MIB = 1048576;
 
-/** Points every download link at the current build and names it, so two downloads are tellable apart. */
+/** Keeps the page download links aligned with the published APK. */
 export async function nameLatestBuild(
   links: Array<HTMLAnchorElement | null>,
   meta: HTMLElement | null,
 ): Promise<void> {
-  let latest: LatestBuild | null = null;
+  let latest: LatestBuild | null;
   try {
     const response = await fetch("/apk/latest.json", { cache: "no-store" });
     latest = response.ok ? ((await response.json()) as LatestBuild) : null;
@@ -22,6 +22,6 @@ export async function nameLatestBuild(
   for (const link of links) link?.setAttribute("href", `/apk/${latest.file}`);
   if (meta) {
     const size = latest.size ? ` · ${(latest.size / MIB).toFixed(0)} MB` : "";
-    meta.textContent = `${latest.file}${size} · Android 8.0 and up`;
+    meta.textContent = `Android 8.0 and up${size} · Direct APK download`;
   }
 }
