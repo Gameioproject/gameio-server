@@ -12,6 +12,7 @@ from adapters.services.minerva import (
 from handler.database import db_game_source_handler
 from handler.sources.indexer import index_host_files
 from handler.sources.platforms import platform_from_files, platform_from_text
+from handler.sources.policy import require_server_sources
 from logger.logger import log
 from models.game_source import GameHostKind
 from tasks.tasks import Task, TaskType, update_job_meta
@@ -31,6 +32,7 @@ class IndexGameHostTask(Task):
 
     @initialize_context()
     async def run(self, host_id: int) -> dict:
+        require_server_sources()
         host = db_game_source_handler.get_host(host_id)
         if host is None:
             raise ValueError(f"Game host {host_id} not found")
@@ -65,6 +67,7 @@ class IndexGameHostTask(Task):
 
     async def _run_torrent(self, host) -> dict:
         """A MiNERVA directory is one torrent: its file list is the listing."""
+        require_server_sources()
         locator = parse_minerva_link(host.base)
         log.info(f"Indexing {host.name} ({locator.canonical})...")
         db_game_source_handler.mark_index_started(host.id)
@@ -73,9 +76,11 @@ class IndexGameHostTask(Task):
             torrent = await fetch_torrent(torrent_url)
             db_game_source_handler.update_host(host.id, info_hash=torrent.info_hash)
             files = torrent_files_as_listing(torrent, locator.directory)
-            platform_slug = host.platform_slug or platform_from_text(
-                locator.directory, torrent.name, torrent_url
-            ) or platform_from_files([f["name"] for f in files])
+            platform_slug = (
+                host.platform_slug
+                or platform_from_text(locator.directory, torrent.name, torrent_url)
+                or platform_from_files([f["name"] for f in files])
+            )
             if platform_slug and not host.platform_slug:
                 db_game_source_handler.update_host(host.id, platform_slug=platform_slug)
             stats = index_host_files(host, files, default_platform=platform_slug)

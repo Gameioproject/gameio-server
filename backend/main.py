@@ -30,9 +30,9 @@ from endpoints.auth import router as auth_router
 from endpoints.catalog import router as catalog_router
 from endpoints.client_tokens import router as client_tokens_router
 from endpoints.collections import router as collections_router
+from endpoints.comments import router as comments_router
 from endpoints.compat_argosy import router as compat_argosy_router
 from endpoints.compat_saves import router as compat_saves_router
-from endpoints.shelves import router as shelves_router
 from endpoints.configs import router as configs_router
 from endpoints.device import router as device_router
 from endpoints.device_auth import router as device_auth_router
@@ -42,6 +42,7 @@ from endpoints.hosts import router as hosts_router
 from endpoints.logs import router as logs_router
 from endpoints.permissions import router as permissions_router
 from endpoints.play import router as play_router
+from endpoints.shelves import router as shelves_router
 from endpoints.tasks import router as tasks_router
 from endpoints.user import router as user_router
 from handler.auth.constants import SESSION_COOKIE_NAME
@@ -167,6 +168,7 @@ app.include_router(shelves_router, prefix="/api")
 app.include_router(compat_argosy_router, prefix="/api")
 app.include_router(compat_saves_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
+app.include_router(comments_router, prefix="/api")
 app.include_router(catalog_router, prefix="/api")
 app.include_router(hosts_router, prefix="/api")
 app.include_router(play_router, prefix="/api")

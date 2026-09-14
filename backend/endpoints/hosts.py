@@ -12,14 +12,16 @@ from endpoints.responses.game_source import (
     GameHostSchema,
     GameHostUpdateSchema,
 )
+from endpoints.source_policy import require_server_sources
 from handler.auth.constants import Scope
 from handler.database import db_game_source_handler
 from handler.redis_handler import low_prio_queue
+from handler.sources.policy import server_sources_enabled
 from models.game_source import GameHostKind
 from tasks.manual.index_game_host import index_game_host_task
+from utils.router import APIRouter
 
 INDEX_LOCK_MAX_AGE = timedelta(hours=1)
-from utils.router import APIRouter
 
 router = APIRouter(
     prefix="/hosts",
@@ -39,6 +41,8 @@ def _get_host(host_id: int):
 
 @protected_route(router.get, "", [Scope.ROMS_READ])
 def get_hosts(request: Request) -> list[GameHostSchema]:
+    if not server_sources_enabled():
+        return []
     counts = db_game_source_handler.count_sources_by_host()
     return [
         GameHostSchema.from_host(host, counts.get(host.id, 0))
@@ -48,6 +52,7 @@ def get_hosts(request: Request) -> list[GameHostSchema]:
 
 @protected_route(router.post, "", [Scope.ROMS_WRITE])
 def add_host(request: Request, body: GameHostCreateSchema) -> GameHostSchema:
+    require_server_sources()
     base = body.base.strip()
     try:
         if body.kind == GameHostKind.INTERNET_ARCHIVE:
@@ -77,6 +82,7 @@ def add_host(request: Request, body: GameHostCreateSchema) -> GameHostSchema:
 def update_host(
     request: Request, host_id: int, body: GameHostUpdateSchema
 ) -> GameHostSchema:
+    require_server_sources()
     _get_host(host_id)
     host = db_game_source_handler.update_host(
         host_id,
@@ -97,6 +103,7 @@ def update_host(
 )
 def delete_host(request: Request, host_id: int) -> None:
     """Remove a host and every source that pointed at it."""
+    require_server_sources()
     if not db_game_source_handler.delete_host(host_id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -116,6 +123,7 @@ def delete_host(request: Request, host_id: int) -> None:
 )
 def index_host(request: Request, host_id: int) -> GameHostIndexSchema:
     """Queue a listing of the host so its files become download sources."""
+    require_server_sources()
     host = _get_host(host_id)
     if host.kind == GameHostKind.HTTP:
         raise HTTPException(

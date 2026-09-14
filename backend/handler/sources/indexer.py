@@ -13,6 +13,7 @@ from handler.sources.matcher import (
     normalize_title_tokens,
 )
 from handler.sources.platforms import platform_from_extension, platform_from_folder
+from handler.sources.policy import require_server_sources
 from models.base import compute_file_extension
 from models.game_source import GameHost
 
@@ -156,6 +157,7 @@ def index_host_files(
     Args:
         default_platform: Fallback when neither the host nor a folder names the system.
     """
+    require_server_sources()
     stats = IndexStats()
     matchers: dict[str, TitleMatcher] = {}
     pending: list[GameSourceInput] = []

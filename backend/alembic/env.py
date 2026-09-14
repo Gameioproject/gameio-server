@@ -9,6 +9,12 @@ from logger.logger import unify_logger
 from models.base import BaseModel
 from models.catalog import CatalogGame, CatalogGameGenre, CatalogGamePlatform  # noqa
 from models.game_activity import GameAsset, GamePlaySession  # noqa
+from models.game_comment import (  # noqa
+    GameComment,
+    GameCommentBlock,
+    GameCommentLike,
+    GameCommentReport,
+)
 from models.game_source import GameHost, GameSource  # noqa
 from models.user import User  # noqa
 
