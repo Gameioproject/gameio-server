@@ -155,7 +155,12 @@ class TestClientTokenCRUD:
             json={"name": "Token 26", "scopes": ["roms.read"]},
             headers={"Authorization": f"Bearer {access_token}"},
         )
-        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+        assert resp.status_code == status.HTTP_201_CREATED
+
+        names = [t.name for t in db_client_token_handler.get_tokens_by_user(admin_user.id)]
+        assert len(names) == 25
+        assert "Token 26" in names
+        assert "Token 0" not in names
 
     def test_create_token_invalid_expiry(self, client, access_token, admin_user):
         response = client.post(
