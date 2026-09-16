@@ -60,6 +60,32 @@ class DBClientTokensHandler(DBBaseHandler):
         )
 
     @begin_session
+    def delete_least_recently_used(
+        self,
+        user_id: int,
+        keep: int,
+        session: Session = None,  # type: ignore
+    ) -> int:
+        """Remove the user's least recently used tokens so that at most ``keep`` remain."""
+        ranked = session.scalars(
+            select(ClientToken.id)
+            .where(ClientToken.user_id == user_id)
+            .order_by(
+                func.coalesce(ClientToken.last_used_at, ClientToken.created_at),
+                ClientToken.id,
+            )
+        ).all()
+        stale = ranked[: max(0, len(ranked) - keep)]
+        if not stale:
+            return 0
+        result = session.execute(
+            delete(ClientToken)
+            .where(ClientToken.id.in_(stale))
+            .execution_options(synchronize_session="evaluate")
+        )
+        return result.rowcount
+
+    @begin_session
     def delete_token(
         self,
         token_id: int,
