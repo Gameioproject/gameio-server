@@ -1,5 +1,6 @@
 import json
 
+from logger.logger import log
 from fastapi import HTTPException, Request, status
 from pydantic import BaseModel, Field
 
@@ -53,12 +54,13 @@ def create_token(
     user = request.user
     validate_scopes(payload.scopes, user.oauth_scopes)
 
-    count = db_client_token_handler.count_tokens_by_user(user.id)
-    if count >= MAX_TOKENS_PER_USER:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Maximum of {MAX_TOKENS_PER_USER} tokens per user reached",
-        )
+    # A device that signs in again after losing its token leaves the old one behind;
+    # retire the least recently used ones rather than locking the user out.
+    evicted = db_client_token_handler.delete_least_recently_used(
+        user.id, keep=MAX_TOKENS_PER_USER - 1
+    )
+    if evicted:
+        log.info(f"Retired {evicted} stale client token(s) for {user.username}")
 
     raw_token = auth_handler.generate_client_token()
     hashed = auth_handler.hash_client_token(raw_token)
