@@ -55,8 +55,7 @@ server {
     # The public front door. An exact match, so only the bare root is taken: every
     # other path still falls through to the web app below.
     location = / {
-        root /var/www/landing;
-        try_files /index.html =404;
+        try_files /landing/index.html =404;
         add_header Cache-Control "no-cache";
     }
 
@@ -64,7 +63,7 @@ server {
     # root only, so its assets need a prefix location of their own or they fall
     # through to the web app's index.html.
     location /brand/ {
-        alias /var/www/landing/brand/;
+        alias /var/www/html/brand/;
         access_log off;
         add_header Cache-Control "public, max-age=86400";
     }
