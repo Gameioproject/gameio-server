@@ -122,8 +122,22 @@ a:focus-visible {
   color: var(--muted);
   font-size: 13px;
 }
-.addon-download {
-  margin-top: 16px;
+.addon-list {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+.addon-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+}
+.addon-list span {
+  color: var(--faint);
+  font-size: 12px;
 }
 .quiet:hover,
 .text-link:hover {
