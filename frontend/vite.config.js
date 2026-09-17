@@ -116,6 +116,9 @@ export default defineConfig(({ mode }) => {
         input: {
           app: fileURLToPath(new URL("./index.html", import.meta.url)),
           landing: fileURLToPath(new URL("./landing/index.html", import.meta.url)),
+          privacy: fileURLToPath(new URL("./landing/privacy.html", import.meta.url)),
+          terms: fileURLToPath(new URL("./landing/terms.html", import.meta.url)),
+          "delete-account": fileURLToPath(new URL("./landing/delete-account.html", import.meta.url)),
         },
       },
       // Browser targets for CSS (prefixing + down-leveling) come from the

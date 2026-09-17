@@ -315,6 +315,29 @@ class DBGameCommentsHandler(DBBaseHandler):
         )
 
     @begin_session
+    def remove_user_comments(
+        self,
+        *,
+        user_id: int,
+        session: Session = None,  # type: ignore
+    ) -> None:
+        """Blank every comment by the user and drop the reports that quote them."""
+        comments = session.scalars(
+            select(GameComment)
+            .where(GameComment.user_id == user_id, GameComment.deleted_at.is_(None))
+            .with_for_update()
+        ).all()
+        for comment in comments:
+            self._remove(session, comment)
+        session.execute(
+            delete(GameCommentReport).where(
+                GameCommentReport.comment_id.in_(
+                    select(GameComment.id).where(GameComment.user_id == user_id)
+                )
+            )
+        )
+
+    @begin_session
     def delete_comment(
         self,
         *,

@@ -7,6 +7,7 @@ export type { ActionKey } from './models/ActionKey';
 export type { Body_add_collection_api_collections_post } from './models/Body_add_collection_api_collections_post';
 export type { Body_add_user_api_users_post } from './models/Body_add_user_api_users_post';
 export type { Body_create_user_from_invite_api_users_register_post } from './models/Body_create_user_from_invite_api_users_register_post';
+export type { Body_delete_account_with_password_api_users_delete_account_post } from './models/Body_delete_account_with_password_api_users_delete_account_post';
 export type { Body_remove_hidden_entity_api_permissions_hidden_delete } from './models/Body_remove_hidden_entity_api_permissions_hidden_delete';
 export type { Body_request_password_reset_api_forgot_password_post } from './models/Body_request_password_reset_api_forgot_password_post';
 export type { Body_reset_password_api_reset_password_post } from './models/Body_reset_password_api_reset_password_post';

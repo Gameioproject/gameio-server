@@ -128,6 +128,7 @@ if not IS_PYTEST_RUN and not DISABLE_CSRF_PROTECTION:
         cookie_secure=ROMM_SESSION_SECURE_COOKIE,
         exempt_urls=[
             re.compile(r"^/api/token.*"),
+            re.compile(r"^/api/users/delete-account$"),
             re.compile(r"^/api/client-tokens/exchange"),
             re.compile(r"^/api/client-tokens/pair/.+/status"),
             re.compile(r"^/api/auth/device/init/?$"),
