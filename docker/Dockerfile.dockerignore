@@ -4,6 +4,9 @@
 # Frontend
 **/assets/library/
 **/node_modules/
+frontend/dist/
+# Launcher builds are served from a volume, never baked into the image
+frontend/public/apk/
 
 # Backend
 backend/tests/
