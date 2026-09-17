@@ -122,6 +122,9 @@ a:focus-visible {
   color: var(--muted);
   font-size: 13px;
 }
+.addon-download {
+  margin-top: 16px;
+}
 .quiet:hover,
 .text-link:hover {
   color: white;
