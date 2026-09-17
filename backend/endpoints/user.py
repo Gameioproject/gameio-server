@@ -5,14 +5,16 @@ from fastapi import Body, Form, HTTPException
 from fastapi import Path as PathVar
 from fastapi import Request, status
 from fastapi.responses import FileResponse
+from starlette.concurrency import run_in_threadpool
 
 from decorators.auth import protected_route
 from endpoints.forms.identity import UserForm
 from endpoints.permissions import emit_permissions_changed
 from endpoints.responses.identity import InviteLinkSchema, UserSchema
+from exceptions.auth_exceptions import AuthCredentialsException
 from handler.auth import auth_handler
 from handler.auth.constants import Scope
-from handler.database import db_user_handler
+from handler.database import db_game_comments_handler, db_user_handler
 from handler.filesystem import fs_asset_handler
 from handler.filesystem.assets_handler import (
     build_asset_file_response,
@@ -489,6 +491,69 @@ async def update_user(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
 
     return UserSchema.model_validate(db_user)
+
+
+async def _delete_account(request: Request, user: User) -> None:
+    if user.role == Role.ADMIN and len(db_user_handler.get_admin_users()) == 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The last admin account cannot be deleted",
+        )
+
+    db_game_comments_handler.remove_user_comments(user_id=user.id)
+    db_user_handler.delete_user(user.id)
+    log.info(f"User {user.id} deleted their account")
+
+    if request.user.is_authenticated and request.user.id == user.id:
+        request.session.clear()
+
+    try:
+        await fs_asset_handler.remove_directory(
+            fs_asset_handler.build_avatar_path(user=user)
+        )
+    except FileNotFoundError:
+        pass
+
+
+@router.post("/delete-account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account_with_password(
+    request: Request,
+    username: str = Body(..., embed=True),
+    password: str = Body(..., embed=True),
+) -> None:
+    """Delete the account whose credentials are given, with its saves, devices and comments.
+
+    Raises:
+        AuthCredentialsException: Username or password is wrong
+        HTTPException: The account is the last admin
+    """
+
+    user = await run_in_threadpool(
+        auth_handler.authenticate_user, username.strip().lower(), password
+    )
+    if not user:
+        raise AuthCredentialsException
+    await _delete_account(request, user)
+
+
+@protected_route(
+    router.delete,
+    "/me",
+    [Scope.ME_WRITE],
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={status.HTTP_400_BAD_REQUEST: {}},
+)
+async def delete_current_account(request: Request) -> None:
+    """Delete the signed-in account, with its saves, devices and comments.
+
+    Raises:
+        HTTPException: The account is the last admin
+    """
+
+    user = db_user_handler.get_user(request.user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await _delete_account(request, user)
 
 
 @protected_route(

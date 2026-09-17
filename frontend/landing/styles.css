@@ -689,3 +689,90 @@ h1 span {
     transition: none;
   }
 }
+.doc {
+  max-width: 760px;
+  padding-block: 64px 48px;
+}
+.doc h1 {
+  margin: 0 0 8px;
+  font-size: 44px;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+}
+.doc h2 {
+  margin: 40px 0 10px;
+  font-size: 20px;
+  letter-spacing: -0.3px;
+}
+.doc p,
+.doc li {
+  color: #d3d4d7;
+}
+.doc p {
+  margin: 0 0 12px;
+}
+.doc ul {
+  padding-left: 20px;
+}
+.doc a:not(.btn) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.doc .updated {
+  color: var(--faint);
+  font-size: 13px;
+}
+.doc form {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.doc label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.doc input[type="text"],
+.doc input[type="password"] {
+  padding: 12px 14px;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+}
+.doc .check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #d3d4d7;
+}
+.doc .danger {
+  background: #e5484d;
+  color: white;
+}
+.doc .danger:hover {
+  background: #f2555a;
+}
+.doc .status {
+  min-height: 1.6em;
+  margin: 0;
+}
+.doc .status[data-kind="error"] {
+  color: #ff8a8e;
+}
+.doc .status[data-kind="done"] {
+  color: #8fe0a6;
+}
+.legal-links {
+  display: flex;
+  gap: 18px;
+}
+.legal-links a:hover {
+  color: var(--ink);
+}

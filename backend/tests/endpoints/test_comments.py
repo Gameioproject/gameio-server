@@ -483,3 +483,48 @@ def test_mobile_admin_can_moderate_without_account_management_scope(
     )
     headers = {"Authorization": f"Bearer {token}"}
     assert client.get("/api/comments/reports", headers=headers).status_code == 200
+
+
+def test_account_deletion_blanks_comments_and_removes_the_user(
+    client: TestClient, headers, viewer_headers, viewer_user: User, admin_user: User
+):
+    own = _post(client, viewer_headers, body="Mine")
+    reply = _post(client, headers, body="Admin reply", parent_id=own["id"])
+    reported = client.put(
+        f"/api/comments/{own['id']}/report", headers=headers, json={"reason": "Spam"}
+    )
+    assert reported.status_code == 204, reported.text
+
+    wrong = client.post(
+        "/api/users/delete-account",
+        json={"username": "test_viewer", "password": "not-it"},
+    )
+    assert wrong.status_code == 401
+    last_admin = client.post(
+        "/api/users/delete-account",
+        json={"username": "test_admin", "password": "test_admin_password"},
+    )
+    assert last_admin.status_code == 400
+
+    deleted = client.post(
+        "/api/users/delete-account",
+        json={"username": " Test_Viewer ", "password": "test_viewer_password"},
+    )
+    assert deleted.status_code == 204, deleted.text
+
+    with sync_session.begin() as session:
+        assert session.get(User, viewer_user.id) is None
+        comment = session.get(GameComment, own["id"])
+        assert comment.body == "" and comment.deleted_at is not None
+        assert session.get(GameComment, reply["id"]).body == "Admin reply"
+    assert client.get("/api/comments/reports", headers=headers).json()["total"] == 0
+
+
+def test_signed_in_account_deletion(
+    client: TestClient, viewer_headers, viewer_user: User
+):
+    own = _post(client, viewer_headers, body="Bye")
+    assert client.delete("/api/users/me", headers=viewer_headers).status_code == 204
+    with sync_session.begin() as session:
+        assert session.get(User, viewer_user.id) is None
+        assert session.get(GameComment, own["id"]).deleted_at is not None
