@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from decorators.auth import protected_route
 from endpoints.forms.identity import UserForm
 from endpoints.permissions import emit_permissions_changed
+from config import GAMEIO_SIGNUP_MAX_USERS
 from endpoints.responses.identity import InviteLinkSchema, UserSchema
 from exceptions.auth_exceptions import AuthCredentialsException
 from handler.auth import auth_handler
@@ -180,6 +181,61 @@ def create_invite_link(
         request.user, role=role, expiration=expiration
     )
     return InviteLinkSchema.from_token(token)
+
+
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
+def create_user_from_signup(
+    username: str = Body(..., embed=True),
+    password: str = Body(..., embed=True),
+    email: str = Body("", embed=True),
+) -> UserSchema:
+    """Create an account without an invite, while the server has seats left.
+
+    Raises:
+        HTTPException: Sign-up is full or turned off
+        HTTPException: Username or email is taken
+        HTTPException: Username, password or email is invalid
+    """
+
+    seats_left = GAMEIO_SIGNUP_MAX_USERS - db_user_handler.count_users()
+    if seats_left <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sign-up is closed: the server is full",
+        )
+
+    try:
+        validate_username(username)
+        validate_password(password)
+        validate_email(email)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from exc
+
+    if db_user_handler.get_user_by_username(username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Username {username} already exists",
+        )
+
+    if email and db_user_handler.get_user_by_email(email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User with email {email} already exists",
+        )
+
+    user = User(
+        username=username.lower(),
+        hashed_password=auth_handler.get_password_hash(password),
+        email=email.lower() or None,
+        role=Role.USER,
+    )
+    created_user = db_user_handler.add_user(user)
+    log.info(f"Account {created_user.id} created through sign-up")
+
+    return UserSchema.model_validate(created_user)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)

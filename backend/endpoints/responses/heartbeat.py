@@ -39,6 +39,8 @@ class FrontendDict(TypedDict):
     DISABLE_LOGS_VIEWER: bool
     YOUTUBE_BASE_URL: str
     SUPPORT_URL: NotRequired[str | None]
+    SIGNUP_OPEN: NotRequired[bool]
+    SIGNUP_SEATS_LEFT: NotRequired[int]
 
 
 class OIDCDict(TypedDict):
