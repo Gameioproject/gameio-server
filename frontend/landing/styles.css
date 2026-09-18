@@ -122,6 +122,11 @@ a:focus-visible {
   color: var(--muted);
   font-size: 13px;
 }
+.addon-note {
+  margin: 14px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+}
 .addon-list {
   margin: 16px 0 0;
   padding: 0;
