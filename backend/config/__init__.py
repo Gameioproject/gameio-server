@@ -306,6 +306,7 @@ GAMEIO_SUPPORT_URL: Final[str | None] = _get_env("GAMEIO_SUPPORT_URL")
 GAMEIO_CLIENT_ADDONS_ONLY: Final[bool] = safe_str_to_bool(
     _get_env("GAMEIO_CLIENT_ADDONS_ONLY", "false")
 )
+GAMEIO_SIGNUP_MAX_USERS: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_MAX_USERS"), 100)
 
 # ASSETS
 MAX_ASSET_UPLOAD_SIZE_BYTES: Final[int] = safe_int(

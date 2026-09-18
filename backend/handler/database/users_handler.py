@@ -111,6 +111,13 @@ class DBUsersHandler(DBBaseHandler):
         return session.scalars(query).all()
 
     @begin_session
+    def count_users(
+        self,
+        session: Session = None,  # type: ignore
+    ) -> int:
+        return session.scalar(select(func.count()).select_from(User)) or 0
+
+    @begin_session
     def delete_user(
         self,
         id: int,
