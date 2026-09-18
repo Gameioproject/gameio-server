@@ -497,3 +497,33 @@ def test_update_user_ui_settings_nested_object(
 
     user = response.json()
     assert user["ui_settings"] == nested_settings
+
+
+def test_signup_creates_a_plain_user_until_the_seats_run_out(client, admin_user: User):
+    created = client.post(
+        "/api/users/signup",
+        json={"username": "NewPlayer", "password": "handheld-1"},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["username"] == "newplayer"
+    assert created.json()["role"] == "user"
+
+    taken = client.post(
+        "/api/users/signup", json={"username": "newplayer", "password": "handheld-2"}
+    )
+    assert taken.status_code == 400
+
+    short = client.post(
+        "/api/users/signup", json={"username": "shorty", "password": "abc"}
+    )
+    assert short.status_code == 400
+
+    with mock.patch("endpoints.user.GAMEIO_SIGNUP_MAX_USERS", 2):
+        full = client.post(
+            "/api/users/signup", json={"username": "toolate", "password": "handheld-3"}
+        )
+    assert full.status_code == 403
+
+    seats = client.get("/api/heartbeat").json()["FRONTEND"]
+    assert seats["SIGNUP_OPEN"] is True
+    assert seats["SIGNUP_SEATS_LEFT"] == 98
