@@ -1,6 +1,6 @@
 # Gameio Server
 
-The backend for [Gameio](https://github.com/naifqarni/gameio), the "Stremio for games" Android launcher, and the home of [playgameio.com](https://playgameio.com).
+The backend for [Gameio](https://github.com/Gameioproject/gameio), the "Stremio for games" Android launcher, and the home of [playgameio.com](https://playgameio.com).
 
 The server knows *about* games but never stores them. It keeps a catalog of games with IGDB metadata, the players' accounts and their saves. Download links come from add-ons that players import in the app.
 

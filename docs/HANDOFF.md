@@ -2,7 +2,7 @@
 
 Written 2026-09-03 by the Claude Code session that did the Gameio rebrand. Read this
 first when picking the project up on a different device. The paired client repo is
-`naifqarni/gameio` (public); this repo (`gameio-server`, private) holds the server,
+`Gameioproject/gameio` (public); this repo (`gameio-server`, private) holds the server,
 the landing page, and this note.
 
 ## What Gameio is
