@@ -86,6 +86,17 @@ server {
         add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
+    # Unlisted builds for the maintainer to try before a release reaches /apk/.
+    location /test/ {
+        alias /var/www/test-apk/;
+        autoindex on;
+        autoindex_exact_size off;
+        types { application/vnd.android.package-archive apk; application/json json; }
+        default_type application/vnd.android.package-archive;
+        add_header Cache-Control "no-store";
+        add_header X-Robots-Tag "noindex, nofollow";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
         proxy_redirect off;
