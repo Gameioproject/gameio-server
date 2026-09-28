@@ -1,17 +1,7 @@
 /* Shared visual language with the Android discovery home. */
+@import "./tokens.css";
 :root {
   color-scheme: dark;
-  --bg: #07080b;
-  --surface: #18191c;
-  --surface-raised: #26272a;
-  --ink: #f6f7f9;
-  --muted: #a4a5a7;
-  --faint: #8b8c90;
-  --blue: #f6f7f9;
-  --line: rgb(255 255 255 / 12%);
-  --sans: "Inter", "Helvetica Neue", Arial, sans-serif;
-  --measure: 1520px;
-  --gutter: clamp(24px, 4.5vw, 76px);
 }
 * {
   box-sizing: border-box;
@@ -725,7 +715,7 @@ h1 span {
 }
 .doc p,
 .doc li {
-  color: #d3d4d7;
+  color: var(--body);
 }
 .doc p {
   margin: 0 0 12px;
@@ -769,7 +759,7 @@ h1 span {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  color: #d3d4d7;
+  color: var(--body);
 }
 .doc .danger {
   background: #e5484d;
@@ -783,10 +773,10 @@ h1 span {
   margin: 0;
 }
 .doc .status[data-kind="error"] {
-  color: #ff8a8e;
+  color: var(--error);
 }
 .doc .status[data-kind="done"] {
-  color: #8fe0a6;
+  color: var(--success);
 }
 .legal-links {
   display: flex;

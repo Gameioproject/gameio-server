@@ -31,6 +31,7 @@ export const fallbackComponent: V2Route = () =>
 export const v2Layouts = {
   main: () => import("@/v2/layouts/AppLayout.vue"),
   auth: () => import("@/v2/layouts/AuthLayout.vue"),
+  gameioAuth: () => import("@/v2/layouts/GameioAuthLayout.vue"),
   // Sub-layout mounted inside AppLayout via a grouping parent route; owns
   // the settings sidebar and renders the active child via `<router-view name="v2" />`.
   settings: () => import("@/v2/layouts/SettingsLayout.vue"),

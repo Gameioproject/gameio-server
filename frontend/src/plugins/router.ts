@@ -52,10 +52,15 @@ function view(routeName: string) {
   return { v2: v2For(routeName) };
 }
 
-function authRoute(path: string, name: string, title: string): RouteRecordRaw {
+function authRoute(
+  path: string,
+  name: string,
+  title: string,
+  layout: keyof typeof v2Layouts = "auth",
+): RouteRecordRaw {
   return {
     path,
-    components: { v2: v2Layouts.auth },
+    components: { v2: v2Layouts[layout] },
     children: [{ path: "", name, meta: { title }, components: view(name) }],
   };
 }
@@ -63,8 +68,18 @@ function authRoute(path: string, name: string, title: string): RouteRecordRaw {
 const routes: RouteRecordRaw[] = [
   authRoute("/setup", ROUTES.SETUP, "login.setup-wizard"),
   authRoute("/login", ROUTES.LOGIN, "login.login"),
-  authRoute("/reset-password", ROUTES.RESET_PASSWORD, "login.reset-password"),
-  authRoute("/forgot-password", ROUTES.FORGOT_PASSWORD, "login.forgot-password"),
+  authRoute(
+    "/reset-password",
+    ROUTES.RESET_PASSWORD,
+    "login.reset-password",
+    "gameioAuth",
+  ),
+  authRoute(
+    "/forgot-password",
+    ROUTES.FORGOT_PASSWORD,
+    "login.forgot-password",
+    "gameioAuth",
+  ),
   authRoute("/register", ROUTES.REGISTER, "login.register"),
   {
     path: "/",

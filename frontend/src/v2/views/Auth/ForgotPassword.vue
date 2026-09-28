@@ -1,15 +1,32 @@
 <script setup lang="ts">
-// ForgotPassword — the reset request on a page of its own.
-// The launcher sends people straight here, and the web sign-in this form used
-// to live behind is not reachable on the hosted service.
-import { RAlert, RBtn } from "@v2/lib";
+// The launcher sends people straight here, and the web sign-in the reset
+// request used to live behind is not reachable on the hosted service.
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import ResetForm from "@/v2/components/Auth/ResetForm.vue";
-import AuthCard from "@/v2/components/shared/AuthCard.vue";
+import identityApi from "@/services/api/identity";
 
 const { t } = useI18n();
+
+const username = ref("");
+const sending = ref(false);
 const sent = ref(false);
+const failed = ref(false);
+
+async function submit() {
+  if (!username.value) return;
+  sending.value = true;
+  failed.value = false;
+  try {
+    await identityApi.requestPasswordReset(username.value);
+    username.value = "";
+    sent.value = true;
+  } catch (error) {
+    console.error("Error sending reset link: ", error);
+    failed.value = true;
+  } finally {
+    sending.value = false;
+  }
+}
 
 function leave() {
   window.location.href = "/";
@@ -17,29 +34,38 @@ function leave() {
 </script>
 
 <template>
-  <AuthCard>
-    <h1 class="r-v2-forgot__title">{{ t("login.reset-password") }}</h1>
+  <h1 class="g-title">{{ t("login.forgot-password") }}</h1>
 
-    <template v-if="sent">
-      <RAlert type="success" density="compact" :text="t('login.reset-sent')" />
-      <RBtn class="r-v2-forgot__back" variant="flat" color="primary" block @click="leave">
-        {{ t("common.close") }}
-      </RBtn>
-    </template>
+  <div v-if="sent" class="g-form">
+    <p class="g-status" data-kind="done" role="status">
+      {{ t("login.reset-sent") }}
+    </p>
+    <button class="g-btn" type="button" @click="leave">
+      {{ t("common.close") }}
+    </button>
+  </div>
 
-    <ResetForm v-else @done="sent = true" @cancel="leave" />
-  </AuthCard>
+  <form v-else class="g-form" @submit.prevent="submit">
+    <label class="g-field" for="g-username">
+      {{ t("login.username") }}
+      <input
+        id="g-username"
+        v-model="username"
+        type="text"
+        autocomplete="username"
+        autocapitalize="none"
+        required
+        :disabled="sending"
+      />
+    </label>
+    <button class="g-btn" type="submit" :disabled="sending || !username">
+      {{ t("login.send-reset-link") }}
+    </button>
+    <button class="g-btn g-btn--quiet" type="button" @click="leave">
+      {{ t("common.cancel") }}
+    </button>
+    <p class="g-status" data-kind="error" role="status" aria-live="polite">
+      {{ failed ? t("login.reset-link-failed") : "" }}
+    </p>
+  </form>
 </template>
-
-<style scoped>
-.r-v2-forgot__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  text-align: center;
-}
-
-.r-v2-forgot__back {
-  margin-top: 1rem;
-}
-</style>
