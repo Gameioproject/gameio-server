@@ -1,9 +1,7 @@
 """How much room open sign-up has left.
 
-``GAMEIO_SIGNUP_MAX_USERS`` at zero or below means no ceiling, which is what a
-server that has finished its invite-only phase runs with. Both the endpoint
-that creates accounts and the heartbeat the clients read answer from here, so
-the app can never offer a seat the server would refuse.
+``GAMEIO_SIGNUP_MAX_USERS`` at zero or below means no ceiling. The endpoint and
+the heartbeat answer from here, so clients never offer a seat that is refused.
 """
 
 from config import GAMEIO_SIGNUP_MAX_USERS
