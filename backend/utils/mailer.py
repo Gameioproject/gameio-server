@@ -1,9 +1,7 @@
-"""Outbound mail for the few messages the service owes a player.
+"""Outbound mail, over plain SMTP so any provider is a credentials change.
 
-Plain SMTP on purpose: Resend, Brevo, Mailgun and SES all speak it, so moving
-provider is a credentials change in the environment rather than a code change.
-With no SMTP host configured the send is skipped and the caller logs the link
-instead, which is how a self-hosted server has always worked.
+With no SMTP host configured the send is skipped and the caller logs the link,
+which is how a self-hosted server has always worked.
 """
 
 import smtplib
@@ -28,10 +26,9 @@ def mail_is_configured() -> bool:
 
 
 def send_mail(to_address: str, subject: str, body: str) -> bool:
-    """Send one plain-text message, reporting whether it left the building.
+    """Send one plain-text message, reporting whether it was accepted.
 
-    Never raises: a reset link that cannot be mailed still exists, and the
-    caller decides what to tell the person waiting for it.
+    Never raises, so the caller decides what to do when mail is unavailable.
     """
     if not mail_is_configured():
         return False
