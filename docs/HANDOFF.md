@@ -156,3 +156,12 @@ builds the select-only magnet, the resolver hands it to debrid (explicit file se
 follows), and the catalog API exposes it as `sources[].magnet` for clients with their own
 torrent client. Roadmap: the basket is "planned", V2 torrents "in progress"; nothing announced
 about per-game torrents.
+
+## Updates
+
+The VPS follows `main` on GitHub. `/usr/local/bin/gameio-update` fetches the
+branch into `/srv/gameio/src` (a shallow clone), backs the database up, builds
+the image and restarts the app, and rolls back to the previous commit if the
+new one does not come up healthy. `gameio-update.timer` runs it every ten
+minutes, so a merged pull request reaches production on its own; `deploy.sh
+pull` triggers it immediately instead of waiting.
