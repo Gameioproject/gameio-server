@@ -97,7 +97,28 @@ server {
         add_header X-Robots-Tag "noindex, nofollow";
     }
 
+    # The two web pages the hosted service still owes a player: asking for a
+    # reset link, and choosing the new password the mailed link leads to. Both
+    # are the web app's own routes, so they are served its shell.
+    location ~ ^/(forgot-password|reset-password)/?$ {
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache";
+        add_header Cross-Origin-Embedder-Policy $coep_header;
+        add_header Cross-Origin-Opener-Policy $coop_header;
+    }
+
+    # Everything else in the web app is closed on the public host: players use
+    # the launcher, and a browser sign-in would only be a second way in to the
+    # same account. Reaching it over an SSH tunnel to this container still
+    # works, because the request then carries a localhost Host header - and a
+    # request with no Host at all fails the test, so the default is closed.
     location / {
+        # Relative, or nginx rebuilds the target from its own listen port and
+        # sends players to the internal one.
+        absolute_redirect off;
+        if ($host !~ "^(localhost|127\.0\.0\.1)") {
+            return 302 /;
+        }
         try_files $uri $uri/ /index.html;
         proxy_redirect off;
         add_header Cache-Control "no-cache";
