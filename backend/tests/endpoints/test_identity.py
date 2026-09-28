@@ -499,31 +499,163 @@ def test_update_user_ui_settings_nested_object(
     assert user["ui_settings"] == nested_settings
 
 
-def test_signup_creates_a_plain_user_until_the_seats_run_out(client, admin_user: User):
+@pytest.fixture
+def roomy_signup():
+    """Sign-up with the per-address throttle out of the way.
+
+    The throttle counts in the shared cache, which outlives a single test, so
+    every case that is not about throttling raises the ceiling instead of
+    racing the other tests for the same five attempts.
+    """
+    with mock.patch("endpoints.user.GAMEIO_SIGNUP_RATE_LIMIT", 1000):
+        yield
+
+
+def test_signup_creates_a_plain_user_until_the_seats_run_out(
+    client, admin_user: User, roomy_signup
+):
     created = client.post(
         "/api/users/signup",
-        json={"username": "NewPlayer", "password": "handheld-1"},
+        json={
+            "username": "NewPlayer",
+            "password": "handheld-1",
+            "email": "new.player@example.com",
+        },
     )
     assert created.status_code == 201, created.text
     assert created.json()["username"] == "newplayer"
     assert created.json()["role"] == "user"
 
     taken = client.post(
-        "/api/users/signup", json={"username": "newplayer", "password": "handheld-2"}
+        "/api/users/signup",
+        json={
+            "username": "newplayer",
+            "password": "handheld-2",
+            "email": "other@example.com",
+        },
     )
     assert taken.status_code == 400
 
     short = client.post(
-        "/api/users/signup", json={"username": "shorty", "password": "abc"}
+        "/api/users/signup",
+        json={"username": "shorty", "password": "abc", "email": "s@example.com"},
     )
     assert short.status_code == 400
 
-    with mock.patch("endpoints.user.GAMEIO_SIGNUP_MAX_USERS", 2):
+    with mock.patch("utils.signup.GAMEIO_SIGNUP_MAX_USERS", 2):
         full = client.post(
-            "/api/users/signup", json={"username": "toolate", "password": "handheld-3"}
+            "/api/users/signup",
+            json={
+                "username": "toolate",
+                "password": "handheld-3",
+                "email": "late@example.com",
+            },
         )
     assert full.status_code == 403
 
     seats = client.get("/api/heartbeat").json()["FRONTEND"]
     assert seats["SIGNUP_OPEN"] is True
     assert seats["SIGNUP_SEATS_LEFT"] == 98
+
+
+def test_signup_asks_for_an_email_so_the_account_can_be_recovered(
+    client, admin_user: User, roomy_signup
+):
+    missing = client.post(
+        "/api/users/signup",
+        json={"username": "noaddress", "password": "handheld-4"},
+    )
+    assert missing.status_code == 400
+    assert "email" in missing.json()["detail"].lower()
+
+    with mock.patch("endpoints.user.GAMEIO_SIGNUP_REQUIRE_EMAIL", False):
+        allowed = client.post(
+            "/api/users/signup",
+            json={"username": "noaddress", "password": "handheld-4"},
+        )
+    assert allowed.status_code == 201, allowed.text
+    assert allowed.json()["email"] is None
+
+
+def test_signup_without_a_cap_reports_unlimited_seats(
+    client, admin_user: User, roomy_signup
+):
+    with mock.patch("utils.signup.GAMEIO_SIGNUP_MAX_USERS", 0):
+        created = client.post(
+            "/api/users/signup",
+            json={
+                "username": "uncapped",
+                "password": "handheld-5",
+                "email": "uncapped@example.com",
+            },
+        )
+        assert created.status_code == 201, created.text
+
+        seats = client.get("/api/heartbeat").json()["FRONTEND"]
+
+    assert seats["SIGNUP_OPEN"] is True
+    assert seats["SIGNUP_SEATS_LEFT"] == -1
+
+
+def test_signup_is_throttled_per_address(client, admin_user: User):
+    with mock.patch("endpoints.user.GAMEIO_SIGNUP_RATE_LIMIT", 2):
+        for index in range(2):
+            client.post(
+                "/api/users/signup",
+                json={
+                    "username": f"flood{index}",
+                    "password": "handheld-6",
+                    "email": f"flood{index}@example.com",
+                },
+            )
+
+        blocked = client.post(
+            "/api/users/signup",
+            json={
+                "username": "flood-last",
+                "password": "handheld-6",
+                "email": "flood-last@example.com",
+            },
+        )
+
+    assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+
+def test_forgot_password_mails_the_link_when_mail_is_set_up(
+    client, admin_user: User, roomy_signup
+):
+    client.post(
+        "/api/users/signup",
+        json={
+            "username": "forgetful",
+            "password": "handheld-7",
+            "email": "forgetful@example.com",
+        },
+    )
+
+    with (
+        mock.patch("endpoints.auth.mail_is_configured", return_value=True),
+        mock.patch("endpoints.auth.send_mail", return_value=True) as send,
+    ):
+        response = client.post(
+            "/api/forgot-password", json={"username": "forgetful"}
+        )
+
+    assert response.status_code == HTTPStatus.OK
+    send.assert_called_once()
+    to_address, subject, body = send.call_args.args
+    assert to_address == "forgetful@example.com"
+    assert "password" in subject.lower()
+    assert "/reset-password?token=" in body
+
+
+def test_forgot_password_says_nothing_about_who_has_an_account(
+    client, admin_user: User
+):
+    with mock.patch("endpoints.auth.send_mail") as send:
+        unknown = client.post(
+            "/api/forgot-password", json={"username": "nobody-here"}
+        )
+
+    assert unknown.status_code == HTTPStatus.OK
+    send.assert_not_called()

@@ -90,7 +90,7 @@ class AuthHandler:
 
         return user
 
-    def generate_password_reset_token(self, user: Any) -> None:
+    def generate_password_reset_token(self, user: Any) -> str:
         now = datetime.now(timezone.utc)
 
         jti = str(uuid.uuid4())
@@ -112,12 +112,11 @@ class AuthHandler:
             to_encode,
             oct_key,
         )
-        log.info(
-            f"Reset password link requested for {hl(user.username, color=CYAN)}. Reset link: {hl(f'{ROMM_BASE_URL}/reset-password?token={token}')}"
-        )
+        log.info(f"Reset password requested for {hl(user.username, color=CYAN)}")
         redis_client.setex(
             f"reset-jti:{jti}", self.reset_passwd_token_expires_in_minutes * 60, "valid"
         )
+        return token
 
     def verify_password_reset_token(self, token: str) -> Any:
         """Verify the password reset token.
