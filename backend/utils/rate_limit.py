@@ -1,7 +1,6 @@
-"""Per-address throttling for the endpoints anyone can reach without an account.
+"""Per-address throttling for endpoints anyone can reach without an account.
 
-Counting lives in the shared cache rather than in process memory so the limit
-still holds when the app runs several workers, which it does in production.
+Counting lives in the shared cache so the limit holds across workers.
 """
 
 from fastapi import HTTPException, Request, status
@@ -17,17 +16,16 @@ def enforce_ip_rate_limit(
 ) -> None:
     """Allow ``limit`` calls from one address per window, then answer 429.
 
-    A cache that is down must not lock people out of signing up, so a failure
-    to count is treated as being under the limit.
+    The window starts at the first call and is never extended, so retries do
+    not push the unlock further away. A cache failure counts as under the limit.
     """
     client_ip = request.client.host if request.client else "unknown"
     key = f"rate:{bucket}:{client_ip}"
 
     try:
-        pipe = sync_cache.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, window_seconds)
-        count, _ = pipe.execute()
+        count = sync_cache.incr(key)
+        if count == 1:
+            sync_cache.expire(key, window_seconds)
     except Exception:
         return
 
