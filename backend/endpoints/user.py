@@ -10,7 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from decorators.auth import protected_route
 from endpoints.forms.identity import UserForm
 from endpoints.permissions import emit_permissions_changed
-from config import GAMEIO_SIGNUP_MAX_USERS
+from config import GAMEIO_SIGNUP_RATE_LIMIT, GAMEIO_SIGNUP_REQUIRE_EMAIL
 from endpoints.responses.identity import InviteLinkSchema, UserSchema
 from exceptions.auth_exceptions import AuthCredentialsException
 from handler.auth import auth_handler
@@ -23,7 +23,9 @@ from handler.filesystem.assets_handler import (
 )
 from logger.logger import log
 from models.user import Role, User
+from utils.rate_limit import enforce_ip_rate_limit
 from utils.router import APIRouter
+from utils.signup import SIGNUP_RATE_WINDOW_SECONDS, signup_is_open
 from utils.validation import (
     ValidationError,
     validate_email,
@@ -185,23 +187,42 @@ def create_invite_link(
 
 @router.post("/signup", status_code=status.HTTP_201_CREATED)
 def create_user_from_signup(
+    request: Request,
     username: str = Body(..., embed=True),
     password: str = Body(..., embed=True),
     email: str = Body("", embed=True),
 ) -> UserSchema:
     """Create an account without an invite, while the server has seats left.
 
+    An address is asked for because it is the only way back into an account
+    whose password is forgotten; the server can be run without that rule, but
+    then the accounts it makes cannot be recovered.
+
     Raises:
         HTTPException: Sign-up is full or turned off
+        HTTPException: Too many sign-ups from this address
         HTTPException: Username or email is taken
         HTTPException: Username, password or email is invalid
     """
 
-    seats_left = GAMEIO_SIGNUP_MAX_USERS - db_user_handler.count_users()
-    if seats_left <= 0:
+    enforce_ip_rate_limit(
+        request,
+        bucket="signup",
+        limit=GAMEIO_SIGNUP_RATE_LIMIT,
+        window_seconds=SIGNUP_RATE_WINDOW_SECONDS,
+        detail="Too many sign-ups from here. Try again later.",
+    )
+
+    if not signup_is_open():
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Sign-up is closed: the server is full",
+        )
+
+    if GAMEIO_SIGNUP_REQUIRE_EMAIL and not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="An email address is required to recover this account later",
         )
 
     try:

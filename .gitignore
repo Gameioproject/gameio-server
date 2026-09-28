@@ -97,3 +97,4 @@ frontend/public/*.apk
 # volume the web server mounts, never in the repo or a container image.
 frontend/public/apk/
 frontend/public/*.apk
+.env.bak-*

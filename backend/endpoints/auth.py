@@ -13,6 +13,7 @@ from config import (
     OIDC_END_SESSION_ENDPOINT,
     OIDC_REDIRECT_URI,
     OIDC_RP_INITIATED_LOGOUT,
+    ROMM_BASE_URL,
 )
 from decorators.auth import oauth
 from endpoints.forms.identity import OAuth2RequestForm
@@ -29,7 +30,12 @@ from logger.formatter import CYAN
 from logger.formatter import highlight as hl
 from logger.logger import log
 from utils.auth import create_or_find_web_device
+from utils.mailer import mail_is_configured, send_mail
+from utils.rate_limit import enforce_ip_rate_limit
 from utils.router import APIRouter
+
+RESET_REQUESTS_PER_WINDOW = 5
+RESET_RATE_WINDOW_SECONDS = 3600
 
 router = APIRouter(
     tags=["auth"],
@@ -317,22 +323,55 @@ async def auth_openid(request: Request):
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
-def request_password_reset(username: str = Body(..., embed=True)) -> None:
-    """Request a password reset link for the user.
+def request_password_reset(
+    request: Request, username: str = Body(..., embed=True)
+) -> None:
+    """Send a password reset link to the address on the account.
+
+    The answer is the same whether or not the username exists, so the endpoint
+    cannot be used to find out who has an account here.
 
     Args:
         username (str): Username of the user requesting the reset
     Returns:
         None: Returns 200 OK status
     """
+    enforce_ip_rate_limit(
+        request,
+        bucket="forgot-password",
+        limit=RESET_REQUESTS_PER_WINDOW,
+        window_seconds=RESET_RATE_WINDOW_SECONDS,
+        detail="Too many reset requests. Try again later.",
+    )
+
     user = db_user_handler.get_user_by_username(username)
 
-    if user:
-        auth_handler.generate_password_reset_token(user)
-    else:
+    if not user:
         log.warning(
             f"Reset password link requested for a user {hl(username, color=CYAN)}, but that username does not exist."
         )
+        return
+
+    token = auth_handler.generate_password_reset_token(user)
+    reset_link = f"{ROMM_BASE_URL}/reset-password?token={token}"
+
+    if user.email and mail_is_configured():
+        sent = send_mail(
+            user.email,
+            "Reset your Gameio password",
+            "Someone asked to reset the password for your Gameio account "
+            f"({user.username}).\n\n"
+            f"Open this link to choose a new one:\n{reset_link}\n\n"
+            "The link stops working in an hour. If this was not you, nothing "
+            "has changed and you can ignore this message.",
+        )
+        if sent:
+            return
+        log.error(f"Reset mail to {hl(user.username, color=CYAN)} could not be sent")
+
+    log.info(
+        f"Reset link for {hl(user.username, color=CYAN)}: {hl(reset_link)}"
+    )
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
