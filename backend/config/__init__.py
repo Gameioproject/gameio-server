@@ -307,9 +307,9 @@ GAMEIO_CLIENT_ADDONS_ONLY: Final[bool] = safe_str_to_bool(
     _get_env("GAMEIO_CLIENT_ADDONS_ONLY", "false")
 )
 GAMEIO_SIGNUP_MAX_USERS: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_MAX_USERS"), 100)
-# Sign-ups allowed from one address per hour, so a script cannot take the seats
-# a real audience is meant to get.
-GAMEIO_SIGNUP_RATE_LIMIT: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_RATE_LIMIT"), 5)
+# Sign-ups allowed from one address per hour. Generous, because a household,
+# a dorm or a phone network puts many real people behind one address.
+GAMEIO_SIGNUP_RATE_LIMIT: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_RATE_LIMIT"), 20)
 GAMEIO_SIGNUP_REQUIRE_EMAIL: Final[bool] = safe_str_to_bool(
     _get_env("GAMEIO_SIGNUP_REQUIRE_EMAIL", "true")
 )
