@@ -362,8 +362,9 @@ def request_password_reset(
             "Someone asked to reset the password for your Gameio account "
             f"({user.username}).\n\n"
             f"Open this link to choose a new one:\n{reset_link}\n\n"
-            "The link stops working in an hour. If this was not you, nothing "
-            "has changed and you can ignore this message.",
+            f"The link stops working in {auth_handler.reset_passwd_token_expires_in_minutes} "
+            "minutes. If this was not you, nothing has changed and you can "
+            "ignore this message.",
         )
         if sent:
             return
