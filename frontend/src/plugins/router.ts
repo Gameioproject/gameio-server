@@ -21,6 +21,7 @@ export const ROUTES = {
   SETUP: "setup",
   LOGIN: "login",
   RESET_PASSWORD: "reset-password",
+  FORGOT_PASSWORD: "forgot-password",
   REGISTER: "register",
   HOME: "home",
   LIBRARY: "library",
@@ -63,6 +64,7 @@ const routes: RouteRecordRaw[] = [
   authRoute("/setup", ROUTES.SETUP, "login.setup-wizard"),
   authRoute("/login", ROUTES.LOGIN, "login.login"),
   authRoute("/reset-password", ROUTES.RESET_PASSWORD, "login.reset-password"),
+  authRoute("/forgot-password", ROUTES.FORGOT_PASSWORD, "login.forgot-password"),
   authRoute("/register", ROUTES.REGISTER, "login.register"),
   {
     path: "/",
@@ -205,6 +207,7 @@ const authExemptRoutes = [
   ROUTES.LOGIN,
   ROUTES.SETUP,
   ROUTES.RESET_PASSWORD,
+  ROUTES.FORGOT_PASSWORD,
   ROUTES.REGISTER,
   ROUTES.PAIR,
 ] as const;
