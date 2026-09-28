@@ -34,7 +34,7 @@ from utils.mailer import mail_is_configured, send_mail
 from utils.rate_limit import enforce_ip_rate_limit
 from utils.router import APIRouter
 
-RESET_REQUESTS_PER_WINDOW = 5
+RESET_REQUESTS_PER_WINDOW = 10
 RESET_RATE_WINDOW_SECONDS = 3600
 
 router = APIRouter(
