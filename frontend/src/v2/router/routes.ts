@@ -6,6 +6,7 @@ export const v2RouteComponents: Partial<Record<string, V2Route>> = {
   home: () => import("@/v2/views/Home.vue"),
   login: () => import("@/v2/views/Auth/Login.vue"),
   "reset-password": () => import("@/v2/views/Auth/ResetPassword.vue"),
+  "forgot-password": () => import("@/v2/views/Auth/ForgotPassword.vue"),
   register: () => import("@/v2/views/Auth/Register.vue"),
   setup: () => import("@/v2/views/Auth/Setup.vue"),
   library: () => import("@/v2/views/Library.vue"),
