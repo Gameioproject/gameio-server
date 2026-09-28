@@ -4,7 +4,6 @@ from config import (
     DISABLE_RUFFLE_RS,
     DISABLE_SETUP_WIZARD,
     DISABLE_USERPASS_LOGIN,
-    GAMEIO_SIGNUP_MAX_USERS,
     OIDC_AUTOLOGIN,
     OIDC_ENABLED,
     OIDC_PROVIDER,
@@ -13,6 +12,7 @@ from config import (
 )
 from endpoints.responses.heartbeat import HeartbeatResponse
 from handler.database import db_user_handler
+from utils.signup import signup_is_open, signup_seats_left
 from utils import get_version
 from utils.router import APIRouter
 from utils.urls import get_support_url
@@ -26,7 +26,7 @@ router = APIRouter(
 async def heartbeat() -> HeartbeatResponse:
     """Basic server configuration for the frontend. Games come from the catalog
     and hosts, so no metadata provider, filesystem or scan task is reported."""
-    seats_left = max(0, GAMEIO_SIGNUP_MAX_USERS - db_user_handler.count_users())
+    seats_left = signup_seats_left()
     return {
         "SYSTEM": {
             "VERSION": get_version(),
@@ -62,7 +62,7 @@ async def heartbeat() -> HeartbeatResponse:
             "DISABLE_LOGS_VIEWER": DISABLE_LOGS_VIEWER,
             "YOUTUBE_BASE_URL": YOUTUBE_BASE_URL,
             "SUPPORT_URL": get_support_url(),
-            "SIGNUP_OPEN": seats_left > 0,
+            "SIGNUP_OPEN": signup_is_open(),
             "SIGNUP_SEATS_LEFT": seats_left,
         },
         "OIDC": {

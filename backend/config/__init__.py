@@ -307,6 +307,24 @@ GAMEIO_CLIENT_ADDONS_ONLY: Final[bool] = safe_str_to_bool(
     _get_env("GAMEIO_CLIENT_ADDONS_ONLY", "false")
 )
 GAMEIO_SIGNUP_MAX_USERS: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_MAX_USERS"), 100)
+# Sign-ups allowed from one address per hour, so a script cannot take the seats
+# a real audience is meant to get.
+GAMEIO_SIGNUP_RATE_LIMIT: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_RATE_LIMIT"), 5)
+GAMEIO_SIGNUP_REQUIRE_EMAIL: Final[bool] = safe_str_to_bool(
+    _get_env("GAMEIO_SIGNUP_REQUIRE_EMAIL", "true")
+)
+
+# MAIL
+# Password resets reach people only once these are set; without them the reset
+# link is written to the log the way a self-hosted server expects.
+SMTP_HOST: Final[str | None] = _get_env("SMTP_HOST")
+SMTP_PORT: Final[int] = safe_int(_get_env("SMTP_PORT"), 587)
+SMTP_USER: Final[str | None] = _get_env("SMTP_USER")
+SMTP_PASSWORD: Final[str | None] = _get_env("SMTP_PASSWORD")
+SMTP_FROM: Final[str] = _get_env("SMTP_FROM", "Gameio <no-reply@playgameio.com>")
+SMTP_STARTTLS: Final[bool] = safe_str_to_bool(_get_env("SMTP_STARTTLS", "true"))
+SMTP_SSL: Final[bool] = safe_str_to_bool(_get_env("SMTP_SSL", "false"))
+SMTP_TIMEOUT_SECONDS: Final[int] = safe_int(_get_env("SMTP_TIMEOUT_SECONDS"), 10)
 
 # ASSETS
 MAX_ASSET_UPLOAD_SIZE_BYTES: Final[int] = safe_int(
