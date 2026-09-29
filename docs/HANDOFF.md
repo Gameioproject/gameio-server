@@ -2,7 +2,7 @@
 
 Written 2026-09-03 by the Claude Code session that did the Gameio rebrand. Read this
 first when picking the project up on a different device. The paired client repo is
-`Gameioproject/gameio` (public); this repo (`gameio-server`, private) holds the server,
+`Gameioproject/gameio` (public); this repo (`gameio-server`, public) holds the server,
 the landing page, and this note.
 
 ## What Gameio is
@@ -74,9 +74,8 @@ Whichever key builds the first *distributed* release becomes permanent — back 
    machine's data survived the rename). A fresh machine just gets an empty one.
 3. Catalog: download the `games.db` release asset (release tag `catalog`) and run the
    importer the previous sessions used (`backend/tools/`), or re-run host indexing.
-4. Users + host configs: `docs/dev-state/users-and-hosts.sql` restores the `users`
-   and `game_hosts` tables (test accounts: admin `claudetest`/`REDACTED`, non-admin
-   `naif`/`REDACTED`).
+4. Users + host configs: create accounts and add game hosts through the admin UI.
+   Never commit database dumps or passwords; this repo is public.
 5. Android toolchain on the old machine lived at `~/.local/toolchain/env.sh`
    (JDK 17, SDK, node). Emulator AVD was `argosy-test`; needs /dev/kvm access.
 6. LAN testing: Windows portproxy maps `192.168.8.106:{3000,5000}` → WSL. Vite serves
