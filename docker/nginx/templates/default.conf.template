@@ -74,6 +74,14 @@ server {
         add_header Cache-Control "public, max-age=86400";
     }
 
+    # The tab and home-screen icons the landing page links to. They live at the
+    # root, so without this the public-host lockdown below redirects them to /.
+    location ~ ^/(favicon\.(ico|svg)|favicon-(16x16|32x32)\.png|apple-touch-icon\.png|android-chrome-(192x192|512x512)\.png|site\.webmanifest)$ {
+        access_log off;
+        add_header Cache-Control "no-cache";
+        try_files $uri =404;
+    }
+
     # Launcher builds. Served straight off a volume so they never enter the image,
     # and with the real Android media type - an empty one makes browsers sniff the
     # zip magic and save the download as .zip, which installs as a corrupt package.
