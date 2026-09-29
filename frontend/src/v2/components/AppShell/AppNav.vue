@@ -50,19 +50,13 @@ onBeforeUnmount(() => {
     <nav class="r-v2-nav">
       <router-link to="/" class="r-v2-nav__logo" :aria-label="t('common.home')">
         <RImg
-          src="/assets/isotipo.svg"
-          alt="RomM isotipo"
+          src="/brand/gameio_icon.svg"
+          alt="Gameio"
           aria-hidden="true"
           class="r-v2-nav__logo-mark"
           :width="32"
         />
-        <RImg
-          src="/assets/logotipo.svg"
-          alt="RomM logotipo"
-          aria-hidden="true"
-          class="r-v2-nav__logo-word"
-          :width="70"
-        />
+        <span class="r-v2-nav__logo-word" aria-hidden="true">Gameio</span>
       </router-link>
 
       <div class="r-v2-nav__center">
@@ -172,9 +166,11 @@ onBeforeUnmount(() => {
 }
 
 .r-v2-nav__logo-word {
-  height: 22px;
-  width: auto;
   display: block;
+  font-size: 19px;
+  font-weight: 700;
+  line-height: 22px;
+  letter-spacing: -0.5px;
 }
 
 .r-v2-nav__center {
@@ -206,7 +202,7 @@ html[data-bp~="sm-and-down"] .r-v2-nav__center {
 }
 
 /* The wordmark stays on the tablet range but drops on the tightest
-   phones so the isotipo + user cluster have room. */
+   phones so the mark + user cluster have room. */
 html[data-bp~="xs"] .r-v2-nav__logo-word {
   display: none;
 }

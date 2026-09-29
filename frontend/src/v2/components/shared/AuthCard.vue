@@ -12,10 +12,10 @@ defineOptions({ inheritAttrs: false });
   <RCard v-bind="$attrs" class="auth-card" variant="elevated" elevation="4">
     <div class="auth-card__inner">
       <RImg
-        src="/assets/isotipo.svg"
+        src="/brand/gameio_icon.svg"
         :width="80"
         class="auth-card__logo"
-        alt="RomM"
+        alt="Gameio"
       />
       <slot />
     </div>
