@@ -12,6 +12,7 @@ from config import (
 )
 from endpoints.responses.heartbeat import HeartbeatResponse
 from handler.database import db_user_handler
+from utils.google_identity import google_web_client_id
 from utils.signup import signup_is_capped, signup_seats_left
 from utils import get_version
 from utils.router import APIRouter
@@ -64,6 +65,7 @@ def heartbeat() -> HeartbeatResponse:
             "SUPPORT_URL": get_support_url(),
             "SIGNUP_OPEN": not signup_is_capped() or seats_left > 0,
             "SIGNUP_SEATS_LEFT": seats_left,
+            "GOOGLE_CLIENT_ID": google_web_client_id(),
         },
         "OIDC": {
             "ENABLED": OIDC_ENABLED,

@@ -313,6 +313,13 @@ GAMEIO_SIGNUP_RATE_LIMIT: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_RATE_LIM
 GAMEIO_SIGNUP_REQUIRE_EMAIL: Final[bool] = safe_str_to_bool(
     _get_env("GAMEIO_SIGNUP_REQUIRE_EMAIL", "true")
 )
+# OAuth client ids whose Google ID tokens are accepted, comma separated. The
+# first is the web client id the launcher asks Google to issue tokens for.
+GOOGLE_CLIENT_IDS: Final[list[str]] = [
+    client_id.strip()
+    for client_id in _get_env("GOOGLE_CLIENT_ID", "").split(",")
+    if client_id.strip()
+]
 
 # MAIL
 # Password resets reach people only once these are set; without them the reset
