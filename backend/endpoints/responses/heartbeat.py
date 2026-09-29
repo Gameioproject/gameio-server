@@ -41,6 +41,7 @@ class FrontendDict(TypedDict):
     SUPPORT_URL: NotRequired[str | None]
     SIGNUP_OPEN: NotRequired[bool]
     SIGNUP_SEATS_LEFT: NotRequired[int]
+    GOOGLE_CLIENT_ID: NotRequired[str | None]
 
 
 class OIDCDict(TypedDict):

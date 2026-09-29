@@ -13,13 +13,16 @@ from handler.auth import auth_handler
 from handler.auth.constants import Scope
 from handler.database import db_client_token_handler, db_user_handler
 from handler.redis_handler import sync_cache
+from logger.logger import log
 from models.client_token import ClientToken
+from models.user import User
 
 PAIR_CODE_LENGTH = 8
 PAIR_CODE_TTL_SECONDS = 60
 RATE_LIMIT_MAX_ATTEMPTS = 5
 RATE_LIMIT_WINDOW_SECONDS = 60
 PAIR_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+MAX_TOKENS_PER_USER = 25
 
 EXPIRY_MAP = {
     "30d": timedelta(days=30),
@@ -68,6 +71,29 @@ def check_rate_limit(request: Request) -> None:
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Too many exchange attempts. Try again later.",
         )
+
+
+def mint_client_token(
+    user: User, name: str, scopes: list[str], expires_in: str | None = None
+) -> tuple[ClientToken, str]:
+    """Store a new client token for ``user`` and return it with its raw value."""
+    # A device that signs in again after losing its token leaves the old one behind;
+    # retire the least recently used ones rather than locking the user out.
+    evicted = db_client_token_handler.delete_least_recently_used(
+        user.id, keep=MAX_TOKENS_PER_USER - 1
+    )
+    if evicted:
+        log.info(f"Retired {evicted} stale client token(s) for {user.username}")
+
+    raw_token = auth_handler.generate_client_token()
+    token = ClientToken(
+        user_id=user.id,
+        name=name,
+        hashed_token=auth_handler.hash_client_token(raw_token),
+        scopes=" ".join(scopes),
+        expires_at=parse_expiry(expires_in),
+    )
+    return db_client_token_handler.add_token(token), raw_token
 
 
 def build_create_schema(token: ClientToken, raw_token: str) -> ClientTokenCreateSchema:

@@ -1,6 +1,5 @@
 import json
 
-from logger.logger import log
 from fastapi import HTTPException, Request, status
 from pydantic import BaseModel, Field
 
@@ -15,7 +14,6 @@ from handler.auth import auth_handler
 from handler.auth.constants import Scope
 from handler.database import db_client_token_handler
 from handler.redis_handler import sync_cache
-from models.client_token import ClientToken
 from utils.client_tokens import (
     PAIR_CODE_TTL_SECONDS,
     build_admin_schema,
@@ -23,7 +21,7 @@ from utils.client_tokens import (
     build_schema,
     exchange,
     generate_pair_code,
-    parse_expiry,
+    mint_client_token,
     validate_scopes,
 )
 from utils.router import APIRouter
@@ -32,8 +30,6 @@ router = APIRouter(
     prefix="/client-tokens",
     tags=["client-tokens"],
 )
-
-MAX_TOKENS_PER_USER = 25
 
 
 class ClientTokenCreatePayload(BaseModel):
@@ -53,27 +49,9 @@ def create_token(
 ) -> ClientTokenCreateSchema:
     user = request.user
     validate_scopes(payload.scopes, user.oauth_scopes)
-
-    # A device that signs in again after losing its token leaves the old one behind;
-    # retire the least recently used ones rather than locking the user out.
-    evicted = db_client_token_handler.delete_least_recently_used(
-        user.id, keep=MAX_TOKENS_PER_USER - 1
+    token, raw_token = mint_client_token(
+        user, payload.name, payload.scopes, payload.expires_in
     )
-    if evicted:
-        log.info(f"Retired {evicted} stale client token(s) for {user.username}")
-
-    raw_token = auth_handler.generate_client_token()
-    hashed = auth_handler.hash_client_token(raw_token)
-    expires_at = parse_expiry(payload.expires_in)
-
-    token = ClientToken(
-        user_id=user.id,
-        name=payload.name,
-        hashed_token=hashed,
-        scopes=" ".join(payload.scopes),
-        expires_at=expires_at,
-    )
-    token = db_client_token_handler.add_token(token)
     return build_create_schema(token, raw_token)
 
 
