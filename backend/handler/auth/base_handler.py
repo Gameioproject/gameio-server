@@ -119,16 +119,14 @@ class AuthHandler:
         return token
 
     def verify_password_reset_token(self, token: str) -> Any:
-        """Verify the password reset token.
+        """Check a password reset token and use it up.
 
         Args:
             token (str): The token to verify.
 
         Raises:
-            HTTPException: If the token is invalid or expired.
-            HTTPException: If the token is missing or malformed.
-            HTTPException: If the user is not found.
-            HTTPException: If the token is not for password reset.
+            HTTPException: If the token is invalid, expired, already used, or
+                names a user that no longer exists.
         """
         from handler.database import db_user_handler
 
@@ -145,29 +143,24 @@ class AuthHandler:
         if not username or not jti:
             raise HTTPException(status_code=400, detail="Invalid token payload")
 
-        # Check JTI in Redis
-        redis_jti_key = f"reset-jti:{jti}"
-        if not redis_client.exists(redis_jti_key):
+        now = datetime.now(timezone.utc).timestamp()
+        if now > payload.claims.get("exp", 0.0):
+            raise HTTPException(status_code=400, detail="Token has expired")
+
+        if not redis_client.getdel(f"reset-jti:{jti}"):
             raise HTTPException(
                 status_code=400, detail="This token has already been used or is invalid"
             )
-
-        # Delete it to enforce one-time use
-        redis_client.delete(redis_jti_key)
 
         user = db_user_handler.get_user_by_username(username)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        now = datetime.now(timezone.utc).timestamp()
-        if now > payload.claims.get("exp", 0.0):
-            raise HTTPException(status_code=400, detail="Token has expired")
-
         return user
 
     async def set_user_new_password(self, user: Any, new_password: str) -> None:
-        """
-        Set the new password for the user.
+        """Set a new password and sign the account out everywhere.
+
         Args:
             user (Any): The user object.
             new_password (str): The new password to set.
@@ -177,6 +170,24 @@ class AuthHandler:
         db_user_handler.update_user(
             user.id, {"hashed_password": self.get_password_hash(new_password)}
         )
+        await self.revoke_user_credentials(user)
+
+    async def revoke_user_credentials(
+        self, user: Any, keep_client_token_id: int | None = None
+    ) -> None:
+        """End every session, device token and refresh token the user holds.
+
+        Args:
+            user (Any): The user, as stored before any rename.
+            keep_client_token_id (int | None): A device token to spare, so the
+                device that changed the password stays signed in.
+        """
+        from handler.database import db_client_token_handler
+
+        db_client_token_handler.delete_tokens_by_user(
+            user.id, except_token_id=keep_client_token_id
+        )
+        OAuthHandler.revoke_refresh_tokens(user.username)
         await RedisSessionMiddleware.clear_user_sessions(user.username)
 
     def generate_invite_link_token(
@@ -293,13 +304,23 @@ class OAuthHandler:
 
         token = self._create_oauth_token(to_encode, expires_delta)
 
-        redis_client.setex(
-            f"refresh-jti:{jti}",
-            int(expires_delta.total_seconds()),
-            "valid",
-        )
+        lifetime = int(expires_delta.total_seconds())
+        redis_client.setex(f"refresh-jti:{jti}", lifetime, "valid")
+        subject = data.get("sub")
+        if subject:
+            index_key = f"user-refresh-jtis:{subject}"
+            redis_client.sadd(index_key, jti)
+            redis_client.expire(index_key, lifetime)
 
         return token
+
+    @staticmethod
+    def revoke_refresh_tokens(username: str) -> None:
+        index_key = f"user-refresh-jtis:{username}"
+        for jti in redis_client.smembers(index_key):
+            jti_value = jti.decode() if isinstance(jti, bytes) else jti
+            redis_client.delete(f"refresh-jti:{jti_value}")
+        redis_client.delete(index_key)
 
     async def consume_refresh_token(self, token: str):
         from handler.database import db_user_handler

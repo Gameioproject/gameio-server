@@ -1,20 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useRoute, useRouter } from "vue-router";
-import { refetchCSRFToken } from "@/services/api";
+import { useRoute } from "vue-router";
 import identityApi from "@/services/api/identity";
-import storeAuth from "@/stores/auth";
 
 const { t } = useI18n();
-const authStore = storeAuth();
 const route = useRoute();
-const router = useRouter();
 const token = route.query.token as string;
 
 const newPassword = ref("");
 const confirmPassword = ref("");
 const submitting = ref(false);
+const done = ref(false);
 const failure = ref("");
 
 const passwordsMismatch = computed(
@@ -34,14 +31,9 @@ async function resetPassword() {
   failure.value = "";
   try {
     await identityApi.resetPassword(token, newPassword.value);
-    await refetchCSRFToken();
-    try {
-      await authStore.fetchCurrentUser();
-    } catch (error) {
-      console.error("Error setting a new password: ", error);
-    }
-    const params = new URLSearchParams(window.location.search);
-    router.push(params.get("next") ?? "/");
+    newPassword.value = "";
+    confirmPassword.value = "";
+    done.value = true;
   } catch (err: unknown) {
     const { response, message } = err as {
       response?: {
@@ -63,11 +55,25 @@ async function resetPassword() {
     submitting.value = false;
   }
 }
+
+function leave() {
+  window.location.href = "/";
+}
 </script>
 
 <template>
   <h1 class="g-title">{{ t("login.reset-password") }}</h1>
-  <form class="g-form" @submit.prevent="resetPassword">
+
+  <div v-if="done" class="g-form">
+    <p class="g-status" data-kind="done" role="status">
+      {{ t("login.reset-done") }}
+    </p>
+    <button class="g-btn" type="button" @click="leave">
+      {{ t("common.close") }}
+    </button>
+  </div>
+
+  <form v-else class="g-form" @submit.prevent="resetPassword">
     <label class="g-field" for="g-new-password">
       {{ t("login.new-password") }}
       <input

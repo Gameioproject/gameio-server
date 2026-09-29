@@ -100,6 +100,20 @@ class DBClientTokensHandler(DBBaseHandler):
         return result.rowcount
 
     @begin_session
+    def delete_tokens_by_user(
+        self,
+        user_id: int,
+        except_token_id: int | None = None,
+        session: Session = None,  # type: ignore
+    ) -> int:
+        stmt = delete(ClientToken).where(ClientToken.user_id == user_id)
+        if except_token_id is not None:
+            stmt = stmt.where(ClientToken.id != except_token_id)
+
+        result = session.execute(stmt.execution_options(synchronize_session="evaluate"))
+        return result.rowcount
+
+    @begin_session
     def update_last_used(
         self,
         token_id: int,

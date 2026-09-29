@@ -2,9 +2,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 from urllib.parse import urlencode
 
-from fastapi import Body, Depends, HTTPException, Request, status
+from fastapi import BackgroundTasks, Body, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.security.http import HTTPBasic
+from starlette.concurrency import run_in_threadpool
 
 from config import (
     OAUTH_ACCESS_TOKEN_EXPIRE_SECONDS,
@@ -30,8 +31,10 @@ from logger.formatter import CYAN
 from logger.formatter import highlight as hl
 from logger.logger import log
 from utils.auth import create_or_find_web_device
+from utils.login_throttle import authenticate_or_throttle
 from utils.mailer import mail_is_configured, send_mail
 from utils.rate_limit import enforce_ip_rate_limit
+from utils.validation import ValidationError, validate_password
 from utils.router import APIRouter
 
 RESET_REQUESTS_PER_WINDOW = 10
@@ -59,7 +62,7 @@ def login(
         UserDisabledException: Auth is disabled
     """
 
-    user = auth_handler.authenticate_user(credentials.username, credentials.password)
+    user = authenticate_or_throttle(request, credentials.username, credentials.password)
     if not user:
         raise AuthCredentialsException
 
@@ -113,10 +116,13 @@ async def logout(request: Request) -> Optional[OIDCLogoutResponse]:
 
 
 @router.post("/token")
-async def token(form_data: Annotated[OAuth2RequestForm, Depends()]) -> TokenResponse:
+async def token(
+    request: Request, form_data: Annotated[OAuth2RequestForm, Depends()]
+) -> TokenResponse:
     """OAuth2 token endpoint
 
     Args:
+        request (Request): Fastapi Request object
         form_data (Annotated[OAuth2RequestForm, Depends): Form Data with OAuth2 info
 
     Raises:
@@ -185,7 +191,9 @@ async def token(form_data: Annotated[OAuth2RequestForm, Depends()]) -> TokenResp
                 detail="Missing username or password",
             )
 
-        user = auth_handler.authenticate_user(form_data.username, form_data.password)
+        user = await run_in_threadpool(
+            authenticate_or_throttle, request, form_data.username, form_data.password
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -324,12 +332,14 @@ async def auth_openid(request: Request):
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
 def request_password_reset(
-    request: Request, username: str = Body(..., embed=True)
+    request: Request,
+    background_tasks: BackgroundTasks,
+    username: str = Body(..., embed=True),
 ) -> None:
     """Send a password reset link to the address on the account.
 
-    The answer is the same whether or not the username exists, so the endpoint
-    cannot be used to find out who has an account here.
+    The answer is the same, and as quick, whether or not the username exists,
+    so the endpoint cannot be used to find out who has an account here.
 
     Args:
         username (str): Username of the user requesting the reset
@@ -355,24 +365,32 @@ def request_password_reset(
     token = auth_handler.generate_password_reset_token(user)
     reset_link = f"{ROMM_BASE_URL}/reset-password?token={token}"
 
-    if user.email and mail_is_configured():
-        sent = send_mail(
-            user.email,
-            "Reset your Gameio password",
-            "Someone asked to reset the password for your Gameio account "
-            f"({user.username}).\n\n"
-            f"Open this link to choose a new one:\n{reset_link}\n\n"
-            f"The link stops working in {auth_handler.reset_passwd_token_expires_in_minutes} "
-            "minutes. If this was not you, nothing has changed and you can "
-            "ignore this message.",
-        )
-        if sent:
-            return
-        log.error(f"Reset mail to {hl(user.username, color=CYAN)} could not be sent")
+    if not mail_is_configured():
+        log.info(f"Reset link for {hl(user.username, color=CYAN)}: {hl(reset_link)}")
+        return
 
-    log.info(
-        f"Reset link for {hl(user.username, color=CYAN)}: {hl(reset_link)}"
+    if not user.email:
+        log.warning(
+            f"Reset requested for {hl(user.username, color=CYAN)}, who has no email address"
+        )
+        return
+
+    background_tasks.add_task(_send_reset_mail, user.email, user.username, reset_link)
+
+
+def _send_reset_mail(to_address: str, username: str, reset_link: str) -> None:
+    sent = send_mail(
+        to_address,
+        "Reset your Gameio password",
+        "Someone asked to reset the password for your Gameio account "
+        f"({username}).\n\n"
+        f"Open this link to choose a new one:\n{reset_link}\n\n"
+        f"The link stops working in {auth_handler.reset_passwd_token_expires_in_minutes} "
+        "minutes. If this was not you, nothing has changed and you can "
+        "ignore this message.",
     )
+    if not sent:
+        log.error(f"Reset mail to {hl(username, color=CYAN)} could not be sent")
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
@@ -382,6 +400,9 @@ async def reset_password(
 ) -> None:
     """Reset password using the token.
 
+    The new password is checked before the token is used up, so a rejected
+    password leaves the link working.
+
     Args:
         token (str): Reset token from the URL
         new_password (str): New user password
@@ -389,6 +410,13 @@ async def reset_password(
     Returns:
         None: Returns 200 OK status
     """
+    try:
+        validate_password(new_password)
+    except ValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=exc.message
+        ) from exc
+
     user = auth_handler.verify_password_reset_token(token)
 
     await auth_handler.set_user_new_password(user, new_password)

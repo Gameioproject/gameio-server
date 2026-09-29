@@ -558,23 +558,23 @@ def test_signup_creates_a_plain_user_until_the_seats_run_out(
     assert seats["SIGNUP_SEATS_LEFT"] == 98
 
 
-def test_signup_asks_for_an_email_so_the_account_can_be_recovered(
+def test_signup_email_is_optional_unless_the_server_requires_one(
     client, admin_user: User, roomy_signup
 ):
-    missing = client.post(
+    allowed = client.post(
         "/api/users/signup",
         json={"username": "noaddress", "password": "handheld-4"},
     )
-    assert missing.status_code == 400
-    assert "email" in missing.json()["detail"].lower()
-
-    with mock.patch("endpoints.user.GAMEIO_SIGNUP_REQUIRE_EMAIL", False):
-        allowed = client.post(
-            "/api/users/signup",
-            json={"username": "noaddress", "password": "handheld-4"},
-        )
     assert allowed.status_code == 201, allowed.text
     assert allowed.json()["email"] is None
+
+    with mock.patch("endpoints.user.GAMEIO_SIGNUP_REQUIRE_EMAIL", True):
+        missing = client.post(
+            "/api/users/signup",
+            json={"username": "noaddress2", "password": "handheld-4"},
+        )
+    assert missing.status_code == 400
+    assert "email" in missing.json()["detail"].lower()
 
 
 def test_signup_without_a_cap_reports_unlimited_seats(
@@ -637,9 +637,7 @@ def test_forgot_password_mails_the_link_when_mail_is_set_up(
         mock.patch("endpoints.auth.mail_is_configured", return_value=True),
         mock.patch("endpoints.auth.send_mail", return_value=True) as send,
     ):
-        response = client.post(
-            "/api/forgot-password", json={"username": "forgetful"}
-        )
+        response = client.post("/api/forgot-password", json={"username": "forgetful"})
 
     assert response.status_code == HTTPStatus.OK
     send.assert_called_once()
@@ -653,9 +651,165 @@ def test_forgot_password_says_nothing_about_who_has_an_account(
     client, admin_user: User
 ):
     with mock.patch("endpoints.auth.send_mail") as send:
-        unknown = client.post(
-            "/api/forgot-password", json={"username": "nobody-here"}
-        )
+        unknown = client.post("/api/forgot-password", json={"username": "nobody-here"})
 
     assert unknown.status_code == HTTPStatus.OK
     send.assert_not_called()
+
+
+def _basic(username: str, password: str) -> dict[str, str]:
+    raw = base64.b64encode(f"{username}:{password}".encode()).decode("ascii")
+    return {"Authorization": f"Basic {raw}"}
+
+
+def _mint_client_token(client, username: str, password: str) -> str:
+    response = client.post(
+        "/api/client-tokens",
+        json={"name": "Handheld", "scopes": ["me.read", "me.write"]},
+        headers=_basic(username, password),
+    )
+    assert response.status_code == 201, response.text
+    return response.json()["raw_token"]
+
+
+def _reset_token_for(client, username: str) -> str:
+    with (
+        mock.patch("endpoints.auth.mail_is_configured", return_value=True),
+        mock.patch("endpoints.auth.send_mail", return_value=True) as send,
+    ):
+        client.post("/api/forgot-password", json={"username": username})
+    body = send.call_args.args[2]
+    return body.split("/reset-password?token=")[1].split()[0]
+
+
+def test_wrong_passwords_are_throttled_per_address(client, admin_user: User):
+    with mock.patch("utils.login_throttle.LOGIN_FAILURES_PER_ADDRESS", 3):
+        for _ in range(3):
+            wrong = client.post(
+                "/api/client-tokens",
+                json={"name": "Handheld", "scopes": ["me.read"]},
+                headers=_basic("test_admin", "not-the-password"),
+            )
+            assert wrong.status_code == HTTPStatus.UNAUTHORIZED
+
+        blocked = client.post(
+            "/api/client-tokens",
+            json={"name": "Handheld", "scopes": ["me.read"]},
+            headers=_basic("test_admin", "test_admin_password"),
+        )
+        assert blocked.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+        token_grant = client.post(
+            "/api/token",
+            data={
+                "grant_type": "password",
+                "username": "test_admin",
+                "password": "test_admin_password",
+            },
+        )
+        assert token_grant.status_code == HTTPStatus.TOO_MANY_REQUESTS
+
+
+def test_correct_passwords_do_not_count_toward_the_throttle(client, admin_user: User):
+    with mock.patch("utils.login_throttle.LOGIN_FAILURES_PER_ADDRESS", 2):
+        for _ in range(5):
+            _mint_client_token(client, "test_admin", "test_admin_password")
+
+
+def test_password_reset_signs_out_every_device(client, admin_user: User):
+    admin_user = DBUsersHandler().update_user(
+        admin_user.id, {"email": "admin@example.com"}
+    )
+    device_token = _mint_client_token(client, "test_admin", "test_admin_password")
+    refresh_token = oauth_handler.create_refresh_token(
+        data={"sub": "test_admin", "iss": "romm:oauth", "scopes": "me.read"},
+        expires_delta=timedelta(days=1),
+    )
+    assert (
+        client.get(
+            "/api/users/me", headers={"Authorization": f"Bearer {device_token}"}
+        ).status_code
+        == HTTPStatus.OK
+    )
+
+    reset = client.post(
+        "/api/reset-password",
+        json={
+            "token": _reset_token_for(client, "test_admin"),
+            "new_password": "brand-new-password",
+        },
+    )
+    assert reset.status_code == HTTPStatus.OK, reset.text
+
+    assert (
+        client.get(
+            "/api/users/me", headers={"Authorization": f"Bearer {device_token}"}
+        ).status_code
+        == HTTPStatus.UNAUTHORIZED
+    )
+    refreshed = client.post(
+        "/api/token",
+        data={"grant_type": "refresh_token", "refresh_token": refresh_token},
+    )
+    assert refreshed.status_code == HTTPStatus.UNAUTHORIZED
+
+
+def test_password_change_keeps_the_device_that_made_it(client, admin_user: User):
+    this_device = _mint_client_token(client, "test_admin", "test_admin_password")
+    other_device = _mint_client_token(client, "test_admin", "test_admin_password")
+
+    changed = client.put(
+        f"/api/users/{admin_user.id}",
+        data={"password": "brand-new-password"},
+        headers={"Authorization": f"Bearer {this_device}"},
+    )
+    assert changed.status_code == HTTPStatus.OK, changed.text
+
+    def status_with(token: str) -> int:
+        return client.get(
+            "/api/users/me", headers={"Authorization": f"Bearer {token}"}
+        ).status_code
+
+    assert status_with(this_device) == HTTPStatus.OK
+    assert status_with(other_device) == HTTPStatus.UNAUTHORIZED
+
+
+def test_reset_refuses_a_weak_password_without_using_up_the_link(
+    client, admin_user: User
+):
+    DBUsersHandler().update_user(admin_user.id, {"email": "admin@example.com"})
+    token = _reset_token_for(client, "test_admin")
+
+    weak = client.post(
+        "/api/reset-password", json={"token": token, "new_password": "abc"}
+    )
+    assert weak.status_code == HTTPStatus.BAD_REQUEST
+    assert "6 characters" in weak.json()["detail"]
+
+    strong = client.post(
+        "/api/reset-password",
+        json={"token": token, "new_password": "brand-new-password"},
+    )
+    assert strong.status_code == HTTPStatus.OK, strong.text
+
+    reused = client.post(
+        "/api/reset-password",
+        json={"token": token, "new_password": "another-password"},
+    )
+    assert reused.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_forgot_password_never_logs_the_link_when_mail_is_set_up(
+    client, admin_user: User
+):
+    DBUsersHandler().update_user(admin_user.id, {"email": "admin@example.com"})
+    with (
+        mock.patch("endpoints.auth.mail_is_configured", return_value=True),
+        mock.patch("endpoints.auth.send_mail", return_value=False),
+        mock.patch("endpoints.auth.log") as logger,
+    ):
+        response = client.post("/api/forgot-password", json={"username": "test_admin"})
+
+    assert response.status_code == HTTPStatus.OK
+    logged = " ".join(str(call) for call in logger.mock_calls)
+    assert "reset-password?token=" not in logged
