@@ -160,8 +160,7 @@ a:focus-visible {
   background: white;
   transform: translateY(-2px);
 }
-.btn svg,
-.feature-icon svg {
+.btn svg {
   width: 19px;
   height: 19px;
   fill: none;
@@ -218,9 +217,6 @@ h1 {
 }
 h1 span {
   color: var(--ink);
-}
-.experience h2 span {
-  color: var(--muted);
 }
 .pitch {
   color: var(--muted);
@@ -332,110 +328,12 @@ h1 span {
 .hero-footnote a:hover {
   color: var(--ink);
 }
-.experience {
-  padding-top: 65px;
-  position: relative;
-}
-.experience::before {
-  content: "";
-  position: absolute;
-  left: var(--gutter);
-  right: var(--gutter);
-  top: 0;
-  border-top: 1px solid var(--line);
-}
-.experience-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 60px;
-}
-.experience h2,
 .get h2 {
   font-size: clamp(30px, 3vw, 46px);
   line-height: 1.22;
   font-weight: 450;
   letter-spacing: -0.045em;
   margin-top: 16px;
-}
-.experience-heading > p {
-  max-width: 320px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.9;
-  padding-bottom: 5px;
-}
-.benefits {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  padding-block: 42px;
-}
-.benefits article {
-  padding: 30px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: linear-gradient(145deg, #1c1d20, #101114);
-}
-.feature-icon {
-  display: grid;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--blue);
-  margin-bottom: 22px;
-}
-.feature-icon svg {
-  width: 22px;
-  height: 22px;
-}
-.feature-number {
-  color: var(--faint);
-  font-size: 9px;
-  letter-spacing: 0.13em;
-}
-.benefits h3 {
-  font-weight: 500;
-  font-size: 20px;
-  letter-spacing: -0.025em;
-  margin-top: 11px;
-}
-.benefits p {
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.85;
-  max-width: 325px;
-}
-.control-note {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding-block: 24px;
-  border-block: 1px solid var(--line);
-}
-.control-glyph {
-  color: var(--blue);
-  font-size: 28px;
-  width: 42px;
-  text-align: center;
-}
-.control-note p {
-  font-size: 13px;
-}
-.control-note p span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  margin-top: 3px;
-}
-.note-mark {
-  color: var(--faint);
-  margin-left: auto;
-  font-size: 23px;
 }
 .get {
   padding-block: 85px;
@@ -534,12 +432,6 @@ h1 span {
     gap: 40px;
     padding: 35px;
   }
-  .experience-heading {
-    gap: 35px;
-  }
-  .benefits {
-    gap: 30px;
-  }
 }
 @media (max-width: 650px) {
   :root {
@@ -619,46 +511,6 @@ h1 span {
     justify-content: center;
   }
   .hero-footnote > span {
-    display: none;
-  }
-  .experience {
-    padding-top: 40px;
-  }
-  .experience-heading {
-    display: block;
-  }
-  .experience-heading > p {
-    margin-top: 20px;
-  }
-  .experience h2 {
-    font-size: clamp(27px, 7.5vw, 38px);
-  }
-  .benefits {
-    grid-template-columns: 1fr;
-    gap: 27px;
-    padding-block: 32px;
-  }
-  .benefits article {
-    padding: 26px;
-  }
-  .feature-icon {
-    float: right;
-    margin: 0 0 10px 15px;
-  }
-  .benefits p {
-    max-width: none;
-    margin-top: 8px;
-  }
-  .benefits h3 {
-    margin-top: 9px;
-  }
-  .control-note {
-    gap: 13px;
-  }
-  .control-note p span {
-    max-width: 245px;
-  }
-  .note-mark {
     display: none;
   }
   .get {
