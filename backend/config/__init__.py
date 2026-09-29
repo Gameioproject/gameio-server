@@ -314,10 +314,14 @@ GAMEIO_SIGNUP_REQUIRE_EMAIL: Final[bool] = safe_str_to_bool(
     _get_env("GAMEIO_SIGNUP_REQUIRE_EMAIL", "true")
 )
 # OAuth client ids whose Google ID tokens are accepted, comma separated. The
-# first is the web client id the launcher asks Google to issue tokens for.
+# first is the web client id the launcher asks Google to issue tokens for. The
+# id is public (it rides in every token), so the hosted one is the default.
+GAMEIO_GOOGLE_CLIENT_ID = (
+    "295801572001-qv3dil50dnjkuvgike08asibvo96ilvb.apps.googleusercontent.com"
+)
 GOOGLE_CLIENT_IDS: Final[list[str]] = [
     client_id.strip()
-    for client_id in _get_env("GOOGLE_CLIENT_ID", "").split(",")
+    for client_id in _get_env("GOOGLE_CLIENT_ID", GAMEIO_GOOGLE_CLIENT_ID).split(",")
     if client_id.strip()
 ]
 
