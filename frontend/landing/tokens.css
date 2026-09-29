@@ -11,7 +11,8 @@
   --error: #ff8a8e;
   --success: #8fe0a6;
   --line: rgb(255 255 255 / 12%);
-  --sans: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --sans: "Geist", "Inter", "Helvetica Neue", Arial, sans-serif;
+  --pixel: "Silkscreen", "Courier New", monospace;
   --measure: 1520px;
   --gutter: clamp(24px, 4.5vw, 76px);
 }
