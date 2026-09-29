@@ -14,6 +14,7 @@ CATALOG_URL_MAX_LENGTH = 1000
 IGDB_IMAGE_BASE_URL = "https://images.igdb.com/igdb/image/upload"
 IGDB_COVER_SIZE = "t_1080p"
 IGDB_COVER_SMALL_SIZE = "t_cover_big"
+IGDB_COVER_LARGE_SIZE = "t_cover_big_2x"
 IGDB_SCREENSHOT_SIZE = "t_720p"
 
 
@@ -83,6 +84,12 @@ class CatalogGame(BaseModel):
         if not self.cover_image_id:
             return None
         return igdb_image_url(self.cover_image_id, IGDB_COVER_SMALL_SIZE)
+
+    @property
+    def url_cover_large(self) -> str | None:
+        if not self.cover_image_id:
+            return None
+        return igdb_image_url(self.cover_image_id, IGDB_COVER_LARGE_SIZE)
 
     @property
     def url_screenshots(self) -> list[str]:

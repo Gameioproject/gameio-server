@@ -96,7 +96,9 @@ class TestClassicLibrary:
         assert mario["fs_size_bytes"] == 8388608
         assert mario["files"][0]["file_name"] == "Super Mario 64 (USA).z64"
         assert mario["regions"] == ["USA"]
-        assert mario["url_cover"] and mario["path_cover_large"] is None
+        assert mario["url_cover"].endswith("/t_1080p/co1abc.jpg")
+        assert mario["path_cover_large"].endswith("/t_cover_big_2x/co1abc.jpg")
+        assert mario["path_cover_small"].endswith("/t_cover_big/co1abc.jpg")
         assert mario["metadatum"]["genres"] == ["Platform"]
         assert mario["has_download"] is True
 
