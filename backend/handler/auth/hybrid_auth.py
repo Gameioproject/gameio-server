@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi.security.http import HTTPBasic
 from starlette.authentication import AuthCredentials, AuthenticationBackend
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import HTTPConnection
 
 from config import KIOSK_MODE
@@ -13,6 +14,7 @@ from handler.database import (
 )
 from models.user import User
 from utils.datetime import to_utc
+from utils.login_throttle import login_is_throttled, record_login_failure
 
 from .constants import READ_SCOPES
 
@@ -41,10 +43,19 @@ class HybridAuthBackend(AuthenticationBackend):
                 if not credentials:
                     return None
 
-                user = auth_handler.authenticate_user(
-                    credentials.username, credentials.password
+                if login_is_throttled(conn, credentials.username):
+                    conn.state.login_throttled = True
+                    return None
+
+                user = await run_in_threadpool(
+                    auth_handler.authenticate_user,
+                    credentials.username,
+                    credentials.password,
                 )
-                if user is None or not user.enabled:
+                if user is None:
+                    record_login_failure(conn, credentials.username)
+                    return None
+                if not user.enabled:
                     return None
 
                 user.set_last_active()

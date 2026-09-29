@@ -23,6 +23,7 @@ from handler.filesystem.assets_handler import (
 )
 from logger.logger import log
 from models.user import Role, User
+from utils.login_throttle import authenticate_or_throttle
 from utils.rate_limit import enforce_ip_rate_limit
 from utils.router import APIRouter
 from utils.signup import SIGNUP_RATE_WINDOW_SECONDS, signup_is_open
@@ -194,9 +195,8 @@ def create_user_from_signup(
 ) -> UserSchema:
     """Create an account without an invite, while the server has seats left.
 
-    An address is asked for because it is the only way back into an account
-    whose password is forgotten; the server can be run without that rule, but
-    then the accounts it makes cannot be recovered.
+    The email address is optional unless the server requires one; without it
+    a forgotten password cannot be reset.
 
     Raises:
         HTTPException: Sign-up is full or turned off
@@ -554,6 +554,16 @@ async def update_user(
         if "role" in cleaned_data:
             await emit_permissions_changed(id)
 
+        if "hashed_password" in cleaned_data:
+            keep_token_id = (
+                getattr(request.state, "client_token_id", None)
+                if request.user.id == id
+                else None
+            )
+            await auth_handler.revoke_user_credentials(
+                db_user, keep_client_token_id=keep_token_id
+            )
+
         # Log out the current user if username or password changed
         creds_updated = cleaned_data.get("username") or cleaned_data.get(
             "hashed_password"
@@ -606,7 +616,7 @@ async def delete_account_with_password(
     """
 
     user = await run_in_threadpool(
-        auth_handler.authenticate_user, username.strip().lower(), password
+        authenticate_or_throttle, request, username.strip().lower(), password
     )
     if not user:
         raise AuthCredentialsException

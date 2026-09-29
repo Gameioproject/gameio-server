@@ -311,7 +311,7 @@ GAMEIO_SIGNUP_MAX_USERS: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_MAX_USERS
 # a dorm or a phone network puts many real people behind one address.
 GAMEIO_SIGNUP_RATE_LIMIT: Final[int] = safe_int(_get_env("GAMEIO_SIGNUP_RATE_LIMIT"), 20)
 GAMEIO_SIGNUP_REQUIRE_EMAIL: Final[bool] = safe_str_to_bool(
-    _get_env("GAMEIO_SIGNUP_REQUIRE_EMAIL", "true")
+    _get_env("GAMEIO_SIGNUP_REQUIRE_EMAIL", "false")
 )
 # OAuth client ids whose Google ID tokens are accepted, comma separated. The
 # first is the web client id the launcher asks Google to issue tokens for. The

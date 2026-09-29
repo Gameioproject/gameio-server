@@ -7,6 +7,7 @@ DEFAULT_OAUTH_TOKEN_EXPIRY: Final = timedelta(minutes=15)
 # Name of the session cookie set by RedisSessionMiddleware (see main.py). Shared
 # so the socket log-stream handshake reads the same cookie the middleware writes.
 SESSION_COOKIE_NAME: Final = "romm_session"
+LOGIN_THROTTLED_DETAIL: Final = "Too many sign-in attempts. Try again in a few minutes."
 
 
 class Scope(enum.StrEnum):

@@ -27,6 +27,7 @@ from config import (
 from handler.auth.constants import (
     EDIT_SCOPES_MAP,
     FULL_SCOPES_MAP,
+    LOGIN_THROTTLED_DETAIL,
     READ_SCOPES_MAP,
     WRITE_SCOPES_MAP,
     Scope,
@@ -80,6 +81,11 @@ def _raise_auth_error(request: Request) -> None:
     (an inline permission error, not a session problem).
     """
     if not request.user.is_authenticated:
+        if getattr(request.state, "login_throttled", False):
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=LOGIN_THROTTLED_DETAIL,
+            )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",

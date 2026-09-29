@@ -10,19 +10,22 @@ const { t } = useI18n();
 const username = ref("");
 const sending = ref(false);
 const sent = ref(false);
-const failed = ref(false);
+const failure = ref("");
 
 async function submit() {
   if (!username.value) return;
   sending.value = true;
-  failed.value = false;
+  failure.value = "";
   try {
     await identityApi.requestPasswordReset(username.value);
     username.value = "";
     sent.value = true;
   } catch (error) {
     console.error("Error sending reset link: ", error);
-    failed.value = true;
+    const status = (error as { response?: { status?: number } }).response
+      ?.status;
+    failure.value =
+      status === 429 ? t("login.reset-too-many") : t("login.reset-link-failed");
   } finally {
     sending.value = false;
   }
@@ -65,7 +68,7 @@ function leave() {
       {{ t("common.cancel") }}
     </button>
     <p class="g-status" data-kind="error" role="status" aria-live="polite">
-      {{ failed ? t("login.reset-link-failed") : "" }}
+      {{ failure }}
     </p>
   </form>
 </template>
