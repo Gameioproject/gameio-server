@@ -136,10 +136,10 @@ async function finishWizard() {
   <div class="r-v2-setup">
     <header class="r-v2-setup__header">
       <RImg
-        src="/assets/isotipo.svg"
+        src="/brand/gameio_icon.svg"
         :width="56"
         class="r-v2-setup__logo"
-        alt="RomM"
+        alt="Gameio"
       />
       <RSteps :current="step" :total="TOTAL_STEPS" :direction="stepDirection" />
       <div class="r-v2-setup__title">
