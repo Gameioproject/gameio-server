@@ -1,12 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108" role="img" aria-label="Gameio">
   <title>Gameio</title>
-  <!-- "Fan": three covers fanned like a hand of cards, the front one ringed. -->
-  <rect width="108" height="108" rx="26" fill="#1C3C8F"/>
-  <path d="M28.00,36.00 H52.00 A5,5 0 0 1 57.00,41.00 V83.00 A5,5 0 0 1 52.00,88.00 H28.00 A5,5 0 0 1 23.00,83.00 V41.00 A5,5 0 0 1 28.00,36.00 Z" fill="#E64A8B" transform="rotate(-18 40 62)"/>
-  <path d="M56.00,36.00 H80.00 A5,5 0 0 1 85.00,41.00 V83.00 A5,5 0 0 1 80.00,88.00 H56.00 A5,5 0 0 1 51.00,83.00 V41.00 A5,5 0 0 1 56.00,36.00 Z" fill="#2FBF8F" transform="rotate(18 68 62)"/>
-  <path d="M42.00,28.50 H66.00 A8.5,8.5 0 0 1 74.50,37.00 V79.00 A8.5,8.5 0 0 1 66.00,87.50 H42.00 A8.5,8.5 0 0 1 33.50,79.00 V37.00 A8.5,8.5 0 0 1 42.00,28.50 Z" fill="#FFFFFF"/>
-  <path d="M42.00,32.00 H66.00 A5,5 0 0 1 71.00,37.00 V79.00 A5,5 0 0 1 66.00,84.00 H42.00 A5,5 0 0 1 37.00,79.00 V37.00 A5,5 0 0 1 42.00,32.00 Z" fill="#F2B734"/>
-  <path d="M46.00,41.00 H62.00 A2,2 0 0 1 64.00,43.00 V57.00 A2,2 0 0 1 62.00,59.00 H46.00 A2,2 0 0 1 44.00,57.00 V43.00 A2,2 0 0 1 46.00,41.00 Z" fill="#FF5A3C"/>
-  <path d="M45.50,66.00 H62.50 A1.5,1.5 0 0 1 64.00,67.50 V67.50 A1.5,1.5 0 0 1 62.50,69.00 H45.50 A1.5,1.5 0 0 1 44.00,67.50 V67.50 A1.5,1.5 0 0 1 45.50,66.00 Z" fill="#1C3C8F" opacity="0.45"/>
-  <path d="M45.50,72.00 H54.50 A1.5,1.5 0 0 1 56.00,73.50 V73.50 A1.5,1.5 0 0 1 54.50,75.00 H45.50 A1.5,1.5 0 0 1 44.00,73.50 V73.50 A1.5,1.5 0 0 1 45.50,72.00 Z" fill="#1C3C8F" opacity="0.3"/>
+  <defs>
+    <linearGradient id="g-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1C1C1E"/><stop offset="0.5" stop-color="#0B0B0C"/><stop offset="1" stop-color="#050505"/></linearGradient>
+    <linearGradient id="g-rim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/><stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.06"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0.08"/></linearGradient>
+  </defs>
+  <rect width="108" height="108" rx="22" fill="url(#g-bg)"/>
+  <rect x="0.6" y="0.6" width="106.8" height="106.8" rx="21.4" fill="none" stroke="url(#g-rim)" stroke-width="0.9"/>
+  <path fill="#F5F5F5" shape-rendering="crispEdges" d="M25.4,34.2h22v4.4h-22zM60.6,34.2h22v4.4h-22zM21,38.6h66v4.4h-66zM21,43h13.2v4.4h-13.2zM38.6,43h35.2v4.4h-35.2zM78.2,43h8.8v4.4h-8.8zM21,47.4h8.8v4.4h-8.8zM43,47.4h26.4v4.4h-26.4zM73.8,47.4h4.4v4.4h-4.4zM82.6,47.4h4.4v4.4h-4.4zM21,51.8h13.2v4.4h-13.2zM38.6,51.8h35.2v4.4h-35.2zM78.2,51.8h8.8v4.4h-8.8zM21,56.2h66v4.4h-66zM21,60.6h26.4v4.4h-26.4zM60.6,60.6h26.4v4.4h-26.4zM21,65h17.6v4.4h-17.6zM69.4,65h17.6v4.4h-17.6zM25.4,69.4h8.8v4.4h-8.8zM73.8,69.4h8.8v4.4h-8.8z"/>
 </svg>
