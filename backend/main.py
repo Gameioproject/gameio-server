@@ -37,6 +37,7 @@ from endpoints.compat_saves import router as compat_saves_router
 from endpoints.configs import router as configs_router
 from endpoints.device import router as device_router
 from endpoints.device_auth import router as device_auth_router
+from endpoints.google_auth import router as google_auth_router
 from endpoints.game_assets import router as game_assets_router
 from endpoints.heartbeat import router as heartbeat_router
 from endpoints.hosts import router as hosts_router
@@ -132,6 +133,7 @@ if not IS_PYTEST_RUN and not DISABLE_CSRF_PROTECTION:
             re.compile(r"^/api/token.*"),
             re.compile(r"^/api/users/delete-account$"),
             re.compile(r"^/api/users/signup$"),
+            re.compile(r"^/api/auth/google$"),
             re.compile(r"^/api/client-tokens/exchange"),
             re.compile(r"^/api/client-tokens/pair/.+/status"),
             re.compile(r"^/api/auth/device/init/?$"),
@@ -178,6 +180,7 @@ app.include_router(user_router, prefix="/api")
 app.include_router(client_tokens_router, prefix="/api")
 app.include_router(device_router, prefix="/api")
 app.include_router(device_auth_router, prefix="/api")
+app.include_router(google_auth_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(configs_router, prefix="/api")
 app.include_router(logs_router, prefix="/api")
