@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import TypedDict
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from decorators.database import begin_session
 from models.base import utc_now
@@ -143,8 +143,13 @@ class DBGameActivityHandler(DBBaseHandler):
         emulator: str | None = None,
         session: Session = None,  # type: ignore
     ) -> list[GameAsset]:
-        query = select(GameAsset).where(
-            GameAsset.user_id == user_id, GameAsset.catalog_game_id == catalog_game_id
+        query = (
+            select(GameAsset)
+            .options(defer(GameAsset.content))
+            .where(
+                GameAsset.user_id == user_id,
+                GameAsset.catalog_game_id == catalog_game_id,
+            )
         )
         if kind is not None:
             query = query.where(GameAsset.kind == kind)
@@ -163,6 +168,7 @@ class DBGameActivityHandler(DBBaseHandler):
         return list(
             session.scalars(
                 select(GameAsset)
+                .options(defer(GameAsset.content))
                 .where(GameAsset.user_id == user_id, GameAsset.kind == kind)
                 .order_by(GameAsset.updated_at.desc())
             )
@@ -197,7 +203,9 @@ class DBGameActivityHandler(DBBaseHandler):
             return []
         return list(
             session.scalars(
-                select(GameAsset).where(
+                select(GameAsset)
+                .options(defer(GameAsset.content))
+                .where(
                     GameAsset.user_id == user_id,
                     GameAsset.catalog_game_id.in_(catalog_game_ids),
                 )

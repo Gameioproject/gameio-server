@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.gzip import DEFAULT_EXCLUDED_CONTENT_TYPES, GZipMiddleware
 from startup import main
 
 import endpoints.sockets.logs  # noqa
@@ -49,6 +50,7 @@ from handler.auth.constants import SESSION_COOKIE_NAME
 from handler.auth.hybrid_auth import HybridAuthBackend
 from handler.auth.middleware.csrf_middleware import CSRFMiddleware
 from handler.auth.middleware.redis_session_middleware import RedisSessionMiddleware
+from handler.middleware.etag_middleware import ETagMiddleware
 from handler.middleware.upload_size_middleware import UploadSizeLimitMiddleware
 from handler.socket_handler import socket_handler
 from logger.formatter import LOGGING_CONFIG
@@ -155,6 +157,20 @@ app.add_middleware(
 
 # Sets context vars in request-response cycle
 app.middleware("http")(set_context_middleware)
+
+app.add_middleware(ETagMiddleware)
+app.add_middleware(
+    GZipMiddleware,
+    minimum_size=1024,
+    compresslevel=6,
+    exclude_content_types=(
+        *DEFAULT_EXCLUDED_CONTENT_TYPES,
+        "application/octet-stream",
+        "application/x-7z-compressed",
+        "application/x-rar-compressed",
+        "application/x-iso9660-image",
+    ),
+)
 
 app.include_router(heartbeat_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
