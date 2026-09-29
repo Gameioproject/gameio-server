@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import enum
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Any, Final
 
 from sqlalchemy import TIMESTAMP, Enum, ForeignKey, String
@@ -12,6 +12,7 @@ from handler.auth.constants import Scope
 from models.base import BaseModel
 from models.permission import PermissionGroup
 from utils.database import CustomJSON
+from utils.datetime import to_utc
 
 if TYPE_CHECKING:
     from models.client_token import ClientToken
@@ -39,6 +40,7 @@ TEXT_FIELD_LENGTH = 255
 # Id of the synthetic, unauthenticated visitor KIOSK_MODE hands out. Negative so
 # it can never collide with an auto-increment row.
 KIOSK_USER_ID: Final = -1
+LAST_ACTIVE_DEBOUNCE: Final = timedelta(minutes=5)
 
 
 class User(BaseModel, SimpleUser):
@@ -141,6 +143,8 @@ class User(BaseModel, SimpleUser):
     def set_last_active(self):
         from handler.database import db_user_handler
 
-        db_user_handler.update_user(
-            self.id, {"last_active": datetime.now(timezone.utc)}
-        )
+        now = datetime.now(timezone.utc)
+        if self.last_active and now - to_utc(self.last_active) < LAST_ACTIVE_DEBOUNCE:
+            return
+        db_user_handler.update_user(self.id, {"last_active": now})
+        self.last_active = now
