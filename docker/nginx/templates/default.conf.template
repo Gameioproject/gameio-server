@@ -92,6 +92,7 @@ server {
         types { application/vnd.android.package-archive apk; application/json json; }
         default_type application/vnd.android.package-archive;
         add_header Cache-Control "public, max-age=31536000, immutable";
+        error_page 404 = @build_missing;
     }
 
     # Unlisted builds for the maintainer to try before a release reaches /apk/.
@@ -103,6 +104,16 @@ server {
         default_type application/vnd.android.package-archive;
         add_header Cache-Control "no-store";
         add_header X-Robots-Tag "noindex, nofollow";
+        error_page 404 = @build_missing;
+    }
+
+    # A build that is not there yet is a miss worth repeating: uploads land a
+    # few minutes apart, and a CDN that remembered the 404 would keep serving
+    # it long after the file arrived. add_header alone does not cover error
+    # responses, hence a location of its own.
+    location @build_missing {
+        add_header Cache-Control "no-store" always;
+        return 404;
     }
 
     # The two web pages the hosted service still owes a player: asking for a
