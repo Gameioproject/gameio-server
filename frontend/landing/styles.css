@@ -117,7 +117,7 @@ a:focus-visible {
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding-block: 22px;
+  padding-block: 16px;
 }
 .brand {
   display: inline-flex;
@@ -130,7 +130,7 @@ a:focus-visible {
 .top-nav {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 18px;
 }
 .quiet {
   color: var(--muted);
@@ -185,15 +185,15 @@ a:focus-visible {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
   align-items: center;
-  gap: clamp(32px, 6vw, 96px);
-  padding-block: clamp(32px, 7vw, 96px) clamp(40px, 6vw, 72px);
+  gap: clamp(24px, 4vw, 56px);
+  padding-block: clamp(24px, 4vw, 48px);
 }
 .hero-copy {
   min-width: 0;
 }
 h1 {
-  margin-top: 22px;
-  font-size: clamp(44px, 7.2vw, 96px);
+  margin-top: 16px;
+  font-size: clamp(42px, 6vw, 76px);
   line-height: 0.98;
   letter-spacing: -0.055em;
   font-weight: 600;
@@ -203,7 +203,7 @@ h1 span {
   color: var(--faint);
 }
 .pitch {
-  margin-top: 26px;
+  margin-top: 18px;
   max-width: 30ch;
   color: var(--muted);
   font-size: clamp(17px, 1.6vw, 20px);
@@ -214,7 +214,7 @@ h1 span {
   flex-wrap: wrap;
   align-items: center;
   gap: 14px;
-  margin-top: 34px;
+  margin-top: 22px;
 }
 .build-meta {
   margin-top: 18px;
@@ -229,7 +229,7 @@ h1 span {
 }
 .icon-tile {
   position: relative;
-  width: min(100%, 460px);
+  width: min(100%, 340px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -303,7 +303,7 @@ h1 span {
   border-top: 2px dashed var(--line);
 }
 .screen-sec {
-  padding-block: 24px 40px;
+  padding-block: 16px 24px;
 }
 .frame {
   position: relative;
@@ -369,13 +369,13 @@ h1 span {
   color: var(--ink);
 }
 .get {
-  padding-block: 56px 72px;
+  padding-block: 28px 40px;
 }
 .get-panel {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: clamp(32px, 6vw, 88px);
-  padding: clamp(24px, 4.5vw, 56px);
+  gap: clamp(24px, 4vw, 48px);
+  padding: clamp(18px, 3vw, 36px);
   background: linear-gradient(
     160deg,
     var(--surface-raised),
@@ -387,19 +387,16 @@ h1 span {
 .get-copy {
   min-width: 0;
 }
-.get-copy > .pixel-label {
-  margin-top: 28px;
-}
 .get h2 {
-  margin-top: 14px;
-  font-size: clamp(32px, 3.6vw, 48px);
+  margin-top: 0;
+  font-size: clamp(28px, 3vw, 38px);
   line-height: 1.1;
   letter-spacing: -0.045em;
   font-weight: 500;
   text-wrap: balance;
 }
 .get .btn {
-  margin-top: 30px;
+  margin-top: 18px;
 }
 .steps {
   list-style: none;
@@ -409,9 +406,9 @@ h1 span {
 }
 .steps > li {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-columns: 36px minmax(0, 1fr);
   gap: 20px;
-  padding-block: 26px;
+  padding-block: 16px;
   border-bottom: 2px dashed var(--line);
 }
 .steps > li:first-child {
@@ -422,8 +419,8 @@ h1 span {
   padding-bottom: 0;
 }
 .step-no {
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
   font-family: var(--pixel);
@@ -457,7 +454,7 @@ h1 span {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 14px;
-  padding: 14px 16px;
+  padding: 10px 12px;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -494,7 +491,7 @@ h1 span {
   align-items: center;
   justify-content: space-between;
   gap: 16px 28px;
-  padding-block: 28px 36px;
+  padding-block: 20px 24px;
   border-top: 1px solid var(--line);
   color: var(--faint);
   font-size: 13px;
@@ -518,18 +515,33 @@ h1 span {
     order: -1;
   }
   .icon-tile {
-    width: min(62vw, 300px);
+    width: min(42vw, 220px);
   }
   .get-panel {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 @media (max-width: 560px) {
-  .top-nav .quiet {
+  .top-nav .quiet:not(.repo-link) {
     display: none;
   }
   .brand {
     font-size: 18px;
+  }
+  .top {
+    gap: 12px;
+  }
+  .top .brand {
+    gap: 8px;
+    font-size: 16px;
+  }
+  .top-nav {
+    gap: 10px;
+  }
+  .top-nav .btn.small {
+    gap: 8px;
+    padding-inline: 10px;
+    font-size: 13px;
   }
   .top .brand img {
     width: 30px;
@@ -546,12 +558,12 @@ h1 span {
     border-radius: 9px;
   }
   .steps > li {
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
   }
   .step-no {
-    width: 36px;
-    height: 36px;
+    width: 28px;
+    height: 28px;
     font-size: 13px;
   }
   .addon {
