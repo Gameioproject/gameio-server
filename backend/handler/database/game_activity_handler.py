@@ -1,3 +1,4 @@
+import gzip
 import hashlib
 from collections.abc import Sequence
 from datetime import datetime
@@ -11,6 +12,7 @@ from models.base import utc_now
 from models.catalog import CatalogGame
 from models.game_activity import (
     DEFAULT_CHANNEL,
+    GZIP_ENCODING,
     GameAsset,
     GameAssetKind,
     GamePlaySession,
@@ -226,12 +228,14 @@ class DBGameActivityHandler(DBBaseHandler):
         channel: str = DEFAULT_CHANNEL,
         slot_number: int = 0,
         device_id: str | None = None,
+        gzipped: bytes | None = None,
         session: Session = None,  # type: ignore
     ) -> GameAsset:
         """Store the unit's current version, replacing whatever the unit held.
 
         The unit is the identity (docs/SAVE_SYNC.md); the file name follows the
         latest upload. Staleness against a base hash is the endpoint's business.
+        `gzipped` is the client's own gzip of `content`, stored as is.
         """
         key = asset_unit_key(kind, emulator, channel, slot_number)
         asset = session.scalar(
@@ -255,7 +259,13 @@ class DBGameActivityHandler(DBBaseHandler):
         asset.slot = channel if kind == GameAssetKind.SAVE else None
         asset.file_name = file_name
         asset.content_hash = hashlib.sha256(content).hexdigest()
-        asset.content = content
+        stored = gzipped if gzipped is not None else gzip.compress(content)
+        if len(stored) < len(content):
+            asset.content = stored
+            asset.content_encoding = GZIP_ENCODING
+        else:
+            asset.content = content
+            asset.content_encoding = None
         asset.size = len(content)
         if screenshot is not None:
             asset.screenshot = screenshot

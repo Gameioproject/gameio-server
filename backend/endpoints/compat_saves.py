@@ -24,6 +24,7 @@ from models.game_activity import (
     DEFAULT_CHANNEL,
     DEVICE_ID_MAX_LENGTH,
     EMULATOR_MAX_LENGTH,
+    GZIP_ENCODING,
     GameAsset,
     GameAssetKind,
     asset_unit_key,
@@ -156,23 +157,28 @@ def _too_large() -> HTTPException:
 
 async def _read_parts(
     file: UploadFile, screenshot: UploadFile | None
-) -> tuple[bytes, bytes | None]:
-    """Read the asset bytes; a part sent as gzip is stored and hashed decompressed."""
+) -> tuple[bytes, bytes | None, bytes | None]:
+    """Read the raw asset, the client's gzip of it when that can be stored as is, and the shot."""
     content = await file.read(MAX_ASSET_BYTES + 1)
     if len(content) > MAX_ASSET_BYTES:
         raise _too_large()
+    gzipped = None
     if (file.content_type or "") in GZIP_MEDIA_TYPES:
+        decompressor = zlib.decompressobj(wbits=31)
         try:
-            content = zlib.decompressobj(wbits=31).decompress(content, MAX_ASSET_BYTES + 1)
+            raw = decompressor.decompress(content, MAX_ASSET_BYTES + 1)
         except zlib.error as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Asset is not valid gzip",
             ) from exc
-        if len(content) > MAX_ASSET_BYTES:
+        if len(raw) > MAX_ASSET_BYTES:
             raise _too_large()
+        if decompressor.eof and not decompressor.unused_data:
+            gzipped = content
+        content = raw
     shot = await screenshot.read() if screenshot is not None else None
-    return content, shot
+    return content, gzipped, shot
 
 
 async def _upload(
@@ -197,7 +203,7 @@ async def _upload(
         unit_key=asset_unit_key(kind, emulator_label, channel_name, slot_number),
     )
     _refuse_if_stale(existing, base_hash, overwrite, rom)
-    content, shot = await _read_parts(file, screenshot)
+    content, gzipped, shot = await _read_parts(file, screenshot)
     asset = db_game_activity_handler.upsert_asset(
         user_id=request.user.id,
         catalog_game_id=game_id,
@@ -209,6 +215,7 @@ async def _upload(
         content=content,
         screenshot=shot,
         device_id=(device_id or None) and device_id[:DEVICE_ID_MAX_LENGTH],
+        gzipped=gzipped,
     )
     return _serialize(asset, rom=rom)
 
@@ -225,7 +232,7 @@ async def _replace(
 ) -> dict[str, Any]:
     asset = _own_asset(request, asset_id, kind)
     _refuse_if_stale(asset, base_hash, overwrite, rom=None)
-    content, shot = await _read_parts(file, screenshot)
+    content, gzipped, shot = await _read_parts(file, screenshot)
     updated = db_game_activity_handler.upsert_asset(
         user_id=request.user.id,
         catalog_game_id=asset.catalog_game_id,
@@ -237,6 +244,7 @@ async def _replace(
         content=content,
         screenshot=shot if shot is not None else asset.screenshot,
         device_id=(device_id or None) and device_id[:DEVICE_ID_MAX_LENGTH],
+        gzipped=gzipped,
     )
     return _serialize(updated)
 
@@ -250,10 +258,15 @@ def _content(request: Request, asset_id: int, kind: GameAssetKind) -> Response:
         "Content-Disposition": f'attachment; filename="{asset.file_name}"',
         "Vary": "Accept-Encoding",
     }
-    body = asset.content
     if "gzip" in request.headers.get("accept-encoding", ""):
-        body = gzip.compress(body, compresslevel=1)
         headers["Content-Encoding"] = "gzip"
+        body = (
+            asset.content
+            if asset.content_encoding == GZIP_ENCODING
+            else gzip.compress(asset.content, compresslevel=1)
+        )
+    else:
+        body = asset.raw_content
     return Response(content=body, media_type="application/octet-stream", headers=headers)
 
 
