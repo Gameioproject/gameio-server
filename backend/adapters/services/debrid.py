@@ -83,7 +83,8 @@ async def resolve_torrent_file(info_hash: str, magnet: str, path: str) -> str:
         info = await client.info(torrent_id) or info
     else:
         raise DebridError(
-            "The debrid service is still fetching this file; try again in a while",
+            "Real-Debrid does not have this game ready yet, so it started downloading"
+            " it. Larger games can take a while; try again in a few minutes",
             retry_later=True,
         )
 
