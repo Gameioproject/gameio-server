@@ -1,10 +1,20 @@
 """The classic library API Argosy uses, answered from the catalog."""
 
+import gzip
+import hashlib
+
 from fastapi import status
+from sqlalchemy import update
 
 from handler.compat.argosy import ROM_ID_BASE, platform_id, rom_id, split_rom_id
-from handler.database import db_catalog_handler, db_game_source_handler
+from handler.database import (
+    db_catalog_handler,
+    db_game_activity_handler,
+    db_game_source_handler,
+)
+from handler.database.base_handler import sync_session
 from handler.database.catalog_handler import CatalogGameInput
+from models.game_activity import GZIP_ENCODING, GameAsset, GameAssetKind
 from models.game_source import GameHostKind
 
 
@@ -201,6 +211,91 @@ class TestClassicLibrary:
             client.post("/api/activity/heartbeat", headers=headers).status_code == 200
         )
         assert client.get("/api/saves", headers=headers).json() == []
+
+    def test_states_are_stored_gzipped_and_served_raw_or_gzipped(
+        self, client, access_token: str
+    ):
+        mario_id = self._seed()
+        rid = rom_id(mario_id, "n64")
+        headers = {"Authorization": f"Bearer {access_token}"}
+        raw = b"\x00" * 4096 + b"STATE"
+        sent = gzip.compress(raw)
+        response = client.post(
+            f"/api/states?rom_id={rid}&emulator=mupen64plus_next&channel=autosave&slot=-1",
+            headers=headers,
+            files={"stateFile": ("mario.state", sent, "application/gzip")},
+        )
+        assert response.status_code == 200, response.text
+        state = response.json()
+        assert state["file_size_bytes"] == len(raw)
+        assert state["content_hash"] == hashlib.sha256(raw).hexdigest()
+
+        stored = db_game_activity_handler.get_asset(state["id"])
+        assert stored.content_encoding == GZIP_ENCODING
+        assert stored.content == sent
+
+        url = f"/api/states/{state['id']}/content"
+        plain = client.get(url, headers={**headers, "Accept-Encoding": "identity"})
+        assert plain.headers.get("content-encoding") is None
+        assert plain.content == raw
+        zipped = client.get(url, headers={**headers, "Accept-Encoding": "gzip"})
+        assert zipped.headers["content-encoding"] == "gzip"
+        assert zipped.content == raw
+        assert (
+            client.get(f"/api/assets/{state['id']}/content", headers=headers).content
+            == raw
+        )
+
+    def test_saves_sent_raw_are_compressed_and_legacy_raw_rows_still_serve(
+        self, client, access_token: str
+    ):
+        mario_id = self._seed()
+        rid = rom_id(mario_id, "n64")
+        headers = {"Authorization": f"Bearer {access_token}"}
+        raw = b"\xff" * 2048
+        save = client.post(
+            f"/api/saves?rom_id={rid}&emulator=mupen64plus_next",
+            headers=headers,
+            files={"saveFile": ("mario.eep", raw, "application/octet-stream")},
+        ).json()
+        assert (
+            db_game_activity_handler.get_asset(save["id"]).content_encoding
+            == GZIP_ENCODING
+        )
+
+        tiny = client.post(
+            f"/api/saves?rom_id={rid}&emulator=mupen64plus_next&channel=tiny",
+            headers=headers,
+            files={"saveFile": ("tiny.eep", b"AB", "application/octet-stream")},
+        ).json()
+        assert db_game_activity_handler.get_asset(tiny["id"]).content_encoding is None
+
+        legacy = db_game_activity_handler.upsert_asset(
+            user_id=db_game_activity_handler.get_asset(save["id"]).user_id,
+            catalog_game_id=mario_id,
+            kind=GameAssetKind.STATE,
+            emulator="mupen64plus_next",
+            file_name="legacy.state",
+            content=raw,
+            screenshot=None,
+        )
+        with sync_session.begin() as session:
+            session.execute(
+                update(GameAsset)
+                .where(GameAsset.id == legacy.id)
+                .values(content=raw, content_encoding=None)
+            )
+        for encoding in ("identity", "gzip"):
+            for asset_id, kind, body in (
+                (save["id"], "saves", raw),
+                (tiny["id"], "saves", b"AB"),
+                (legacy.id, "states", raw),
+            ):
+                response = client.get(
+                    f"/api/{kind}/{asset_id}/content",
+                    headers={**headers, "Accept-Encoding": encoding},
+                )
+                assert response.content == body
 
     def test_heartbeat_marks_catalog_only(self, client):
         system = client.get("/api/heartbeat").json()["SYSTEM"]

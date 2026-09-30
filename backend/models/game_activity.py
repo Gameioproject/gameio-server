@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import enum
+import gzip
 from datetime import datetime
 
 from sqlalchemy import (
@@ -25,6 +26,7 @@ ASSET_FILE_NAME_MAX_LENGTH = 400
 CHANNEL_MAX_LENGTH = 64
 UNIT_KEY_MAX_LENGTH = 300
 DEFAULT_CHANNEL = "autosave"
+GZIP_ENCODING = "gzip"
 
 
 class GamePlaySession(BaseModel):
@@ -112,8 +114,19 @@ class GameAsset(BaseModel):
         LargeBinary().with_variant(LONGBLOB, "mysql", "mariadb")
     )
     size: Mapped[int] = mapped_column(Integer, default=0)
+    # "gzip" when `content` is stored compressed; `content_hash` and `size` are always
+    # of the raw asset. Rows from before compression at rest are null (raw).
+    content_encoding: Mapped[str | None] = mapped_column(
+        String(length=16), default=None
+    )
     screenshot: Mapped[bytes | None] = mapped_column(
         LargeBinary().with_variant(LONGBLOB, "mysql", "mariadb")
     )
 
     game: Mapped[CatalogGame] = relationship(lazy="joined")
+
+    @property
+    def raw_content(self) -> bytes:
+        if self.content_encoding == GZIP_ENCODING:
+            return gzip.decompress(self.content)
+        return self.content

@@ -103,7 +103,7 @@ async def upload_game_asset(
 def get_game_asset_content(request: Request, asset_id: int) -> Response:
     asset = _own_asset(request, asset_id)
     return Response(
-        content=asset.content,
+        content=asset.raw_content,
         media_type="application/octet-stream",
         headers={"Content-Disposition": f'attachment; filename="{asset.file_name}"'},
     )

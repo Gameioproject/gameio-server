@@ -108,8 +108,10 @@ offered as downloads. Response:
 - `PUT /saves/{id}` and `PUT /states/{id}` with `base_hash&overwrite&device_id`
 
 Multipart `saveFile` / `stateFile` plus optional `screenshotFile`. A part sent with media
-type `application/gzip` is decompressed on arrival; the stored bytes and `content_hash` are
-always the raw asset. An upload replaces
+type `application/gzip` is decompressed on arrival to check and hash it; `content_hash` and
+`file_size_bytes` are always of the raw asset. The server stores the asset gzipped
+(`content_encoding = "gzip"`, keeping the client's own gzip when it sent one) unless that is
+no smaller; rows from before compression at rest have a null encoding and are raw. An upload replaces
 the unit's row. If `base_hash` is given and the row's current hash differs and
 `overwrite` is false, the server answers **409** with
 `{"detail": {"error": "stale_base", "asset": {...}}}` so the client can reconcile
